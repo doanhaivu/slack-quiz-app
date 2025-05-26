@@ -808,8 +808,27 @@ export default async function handler(
       return res.status(400).json({ error: 'Invalid action' });
     }
   } catch (error) {
-    console.error('Error processing content:', error);
-    res.status(500).json({ error: 'Failed to process content' });
+    console.error('Error processing content:', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      action: req.body.action || 'unknown',
+      timestamp: new Date().toISOString(),
+      requestBody: {
+        action: req.body.action,
+        hasText: !!req.body.text,
+        hasImages: !!req.body.images?.length,
+        hasUrls: !!req.body.urls?.length,
+        hasExtractedContent: !!req.body.extractedContent,
+        channelId: req.body.channelId || 'default'
+      }
+    });
+    
+    res.status(500).json({ 
+      error: 'Failed to process content',
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined,
+      action: req.body.action || 'unknown',
+      timestamp: new Date().toISOString()
+    });
   }
 }
 
