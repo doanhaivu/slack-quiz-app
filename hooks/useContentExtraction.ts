@@ -7,35 +7,32 @@ interface ExtractedContent {
   prompts: ExtractedItem[];
 }
 
-interface ExtractResult {
-  message: string;
-  extractedContent: ExtractedContent;
-}
-
 interface PostResult {
   message: string;
   results: Array<{
     category: string;
     title?: string;
+    action?: string;
     count?: number;
-    slackMessageId: string;
+    slackMessageId?: string;
   }>;
 }
 
-export const useContentExtraction = () => {
+export function useContentExtraction() {
   const [pastedText, setPastedText] = useState<string>('');
-  const [pastedImages, setPastedImages] = useState<string[]>([]);
-  const [pastedUrls, setPastedUrls] = useState<string[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState<string>('');
   const [loadingExtract, setLoadingExtract] = useState<boolean>(false);
   const [loadingPost, setLoadingPost] = useState<boolean>(false);
   const [loadingRegenerate, setLoadingRegenerate] = useState<boolean>(false);
-  const [extractResult, setExtractResult] = useState<ExtractResult | null>(null);
-  const [postResult, setPostResult] = useState<PostResult | null>(null);
+  const [pastedImages, setPastedImages] = useState<string[]>([]);
+  const [pastedUrls, setPastedUrls] = useState<string[]>([]);
+  const [extractResult, setExtractResult] = useState<{ extractedContent: ExtractedContent } | null>(null);
   const [editedContent, setEditedContent] = useState<ExtractedContent | null>(null);
-  const [selectedChannel, setSelectedChannel] = useState<string>('C08ST272AAG'); // Default channel
+  const [postResult, setPostResult] = useState<PostResult | null>(null);
   const [extractionProgress, setExtractionProgress] = useState<number>(0);
   const [extractionStatus, setExtractionStatus] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
 
   // Update edited content whenever extract result changes
   useEffect(() => {
@@ -103,105 +100,121 @@ export const useContentExtraction = () => {
   };
 
   const handlePost = async () => {
-    if (!editedContent) {
-      alert('No content to post. Please extract content first.');
+    if (!editedContent || Object.keys(editedContent).length === 0) {
+      setError('No content to post');
       return;
     }
-    
+
     setLoadingPost(true);
+    setError('');
+
     try {
-      const response = await fetch('/api/parse-and-post', {
+      const response = await fetch('/api/slack/post', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'post',
           extractedContent: editedContent,
-          channelId: selectedChannel
+          channelId: selectedChannel,
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to post content');
       }
-      
+
       setPostResult(data);
       alert('Content posted to Slack successfully!');
-    } catch (error) {
-      console.error('Error posting content:', error);
-      alert(error instanceof Error ? error.message : 'Failed to post content');
+    } catch (err) {
+      console.error('Error posting to Slack:', err);
+      setError(err instanceof Error ? err.message : 'Failed to post to Slack');
     } finally {
       setLoadingPost(false);
     }
   };
 
   const handlePostExtractedOnly = async () => {
-    if (!editedContent) {
-      alert('No content to post. Please extract content first.');
+    if (!editedContent || Object.keys(editedContent).length === 0) {
+      setError('No content to post');
       return;
     }
-    
+
     setLoadingPost(true);
+    setError('');
+
     try {
-      const response = await fetch('/api/parse-and-post', {
+      const response = await fetch('/api/slack/post-extracted', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'post_extracted_only',
           extractedContent: editedContent,
           images: pastedImages,
           urls: pastedUrls,
-          channelId: selectedChannel
+          channelId: selectedChannel,
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to post content');
       }
-      
+
+      // Update the extracted content with any message IDs from the response
+      if (data.extractedContent) {
+        setEditedContent(data.extractedContent);
+      }
+
       setPostResult(data);
-      alert('Content posted to Slack successfully!');
-    } catch (error) {
-      console.error('Error posting content:', error);
-      alert(error instanceof Error ? error.message : 'Failed to post content');
+      alert('Extracted items posted to Slack successfully!');
+    } catch (err) {
+      console.error('Error posting extracted content:', err);
+      setError(err instanceof Error ? err.message : 'Failed to post extracted content');
     } finally {
       setLoadingPost(false);
     }
   };
 
   const handlePostQuizVocabAsReplies = async () => {
-    if (!editedContent || loadingPost) return;
-    
+    if (!editedContent || !editedContent.news || editedContent.news.length === 0) {
+      setError('No news content with quiz/vocabulary to post');
+      return;
+    }
+
     setLoadingPost(true);
-    console.log('Posting vocabulary and quizzes as replies to Slack...');
-    
+    setError('');
+
     try {
-      const response = await fetch('/api/parse-and-post', {
+      const response = await fetch('/api/slack/post-quiz-vocab', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          action: 'post_quiz_vocab_as_replies',
           extractedContent: editedContent,
-          channelId: selectedChannel
+          channelId: selectedChannel,
         }),
       });
+
       const data = await response.json();
-      
-      console.log('Vocabulary and quizzes successfully posted as replies');
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to post quiz/vocabulary as replies');
+      }
+
       setPostResult(data);
-      alert('Vocabulary and quizzes posted as replies successfully!');
-    } catch (error) {
-      console.error(error);
-      alert('Error posting vocabulary and quizzes to Slack');
+      alert('Quiz and vocabulary posted as replies successfully!');
+    } catch (err) {
+      console.error('Error posting quiz/vocab as replies:', err);
+      setError(err instanceof Error ? err.message : 'Failed to post quiz/vocabulary as replies');
+    } finally {
+      setLoadingPost(false);
     }
-    setLoadingPost(false);
   };
 
   const handleRemoveItem = async (category: keyof ExtractedContent, index: number) => {
@@ -268,29 +281,38 @@ export const useContentExtraction = () => {
     if (!editedContent || loadingRegenerate) return;
     
     setLoadingRegenerate(true);
-    
+    setError('');
+
     try {
-      const response = await fetch('/api/parse-and-post', {
+      const item = editedContent[category][index];
+      if (!item) {
+        throw new Error('Item not found');
+      }
+
+      const response = await fetch('/api/content/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'generate_item',
-          item: editedContent[category][index]
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ item }),
       });
       
       const data = await response.json();
       
-      if (data.item) {
-        const newContent = { ...editedContent };
-        newContent[category][index] = data.item;
-        setEditedContent(newContent);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to regenerate content');
       }
       
-      setLoadingRegenerate(false);
-    } catch (error) {
-      console.error('Error regenerating item content:', error);
-      alert('Error regenerating quiz and vocabulary for this item');
+      // Update the item with regenerated content
+      if (data.item && editedContent) {
+        const updatedContent = { ...editedContent };
+        updatedContent[category][index] = data.item;
+        setEditedContent(updatedContent);
+      }
+    } catch (err) {
+      console.error('Error regenerating content:', err);
+      setError(err instanceof Error ? err.message : 'Failed to regenerate content');
+    } finally {
       setLoadingRegenerate(false);
     }
   };
@@ -299,28 +321,39 @@ export const useContentExtraction = () => {
     if (!editedContent || loadingPost) return;
     
     setLoadingPost(true);
-    console.log(`Posting single ${category} item to Slack...`);
-    
+    setError('');
+
     try {
-      const response = await fetch('/api/parse-and-post', {
+      const item = editedContent[category][index];
+      if (!item) {
+        throw new Error('Item not found');
+      }
+
+      const response = await fetch('/api/content/post-single', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          action: 'post_single_item',
           category: category,
-          item: editedContent[category][index],
-          channelId: selectedChannel
+          item: item,
+          channelId: selectedChannel,
         }),
       });
+
       const data = await response.json();
-      console.log(`Single item successfully posted to Slack`);
-      setPostResult(data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to post item');
+      }
+
       alert(`${category} item posted to Slack successfully!`);
-    } catch (error) {
-      console.error(error);
-      alert('Error posting single item to Slack');
+    } catch (err) {
+      console.error('Error posting single item:', err);
+      setError(err instanceof Error ? err.message : 'Failed to post item');
+    } finally {
+      setLoadingPost(false);
     }
-    setLoadingPost(false);
   };
 
   return {
@@ -343,6 +376,7 @@ export const useContentExtraction = () => {
     extractionProgress,
     extractionStatus,
     isExtracting,
+    error,
     
     // Actions
     handleExtract,
@@ -358,4 +392,4 @@ export const useContentExtraction = () => {
     handleRegenerateItemContent,
     handlePostSingleItem,
   };
-}; 
+} 
