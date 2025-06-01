@@ -5,6 +5,7 @@ import LogDisplay from '../components/LogDisplay';
 import { QuizReportSidebar } from '../components/QuizReportSidebar/QuizReportSidebar';
 import { ProgressBar } from '../components/ProgressBar/ProgressBar';
 import { ThreeColumnLayout } from '../components/Layout/ThreeColumnLayout';
+import { ContentReview } from '../components/ContentReview/ContentReview';
 import { useContentExtraction } from '../hooks/useContentExtraction';
 import { useMediaHandling } from '../hooks/useMediaHandling';
 import { useLogs } from '../contexts/LogContext';
@@ -92,6 +93,7 @@ export default function Home() {
     setPastedUrls,
     loadingExtract,
     loadingPost,
+    loadingRegenerate,
     extractResult,
     postResult,
     editedContent,
@@ -103,10 +105,15 @@ export default function Home() {
     handleExtract,
     handlePost,
     handlePostExtractedOnly,
+    handlePostQuizVocabAsReplies,
     handleRemoveItem,
     handleTitleChange,
     handleContentChange,
     handleUrlChange,
+    handleRemoveQuizQuestion,
+    handleRemoveVocabItem,
+    handleRegenerateItemContent,
+    handlePostSingleItem,
   } = useContentExtraction();
 
   const { handlePaste } = useMediaHandling(setPastedImages, setPastedUrls);
@@ -246,149 +253,6 @@ export default function Home() {
     );
   };
 
-  // Simplified content review renderer - will be extracted to its own component later
-  const renderExtractedContentForReview = () => {
-    if (!editedContent) return null;
-    
-    return (
-      <div className={typedStyles.extractedContent}>
-        <h3>Review and Edit Extracted Content</h3>
-        
-        {/* News Items */}
-        {editedContent.news && editedContent.news.length > 0 && (
-          <>
-            <h3 className={typedStyles.categoryHeading}>News</h3>
-            {editedContent.news.map((item, index) => (
-              <div key={`news-${index}`} className={typedStyles.itemCard}>
-                <input
-                  type="text"
-                  value={item.title}
-                  onChange={(e) => handleTitleChange('news', index, e.target.value)}
-                  className={typedStyles.editableTitle}
-                  placeholder="Title"
-                />
-                <textarea
-                  value={item.content}
-                  onChange={(e) => handleContentChange('news', index, e.target.value)}
-                  className={typedStyles.editableContent}
-                  placeholder="Content"
-                  rows={3}
-                />
-                <input
-                  type="url"
-                  value={item.url || ''}
-                  onChange={(e) => handleUrlChange('news', index, e.target.value)}
-                  className={typedStyles.input}
-                  placeholder="URL (optional)"
-                />
-                
-                <div className={typedStyles.itemActions}>
-                  <button 
-                    className={typedStyles.removeButton}
-                    onClick={() => handleRemoveItem('news', index)}
-                  >
-                    Remove Item
-                  </button>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-        
-        {/* Tools and Prompts - simplified version */}
-        {editedContent.tools && editedContent.tools.length > 0 && (
-          <>
-            <h3 className={typedStyles.categoryHeading}>Tools</h3>
-            {editedContent.tools.map((item, index) => (
-              <div key={`tools-${index}`} className={typedStyles.itemCard}>
-                <input
-                  type="text"
-                  value={item.title}
-                  onChange={(e) => handleTitleChange('tools', index, e.target.value)}
-                  className={typedStyles.editableTitle}
-                  placeholder="Title"
-                />
-                <textarea
-                  value={item.content}
-                  onChange={(e) => handleContentChange('tools', index, e.target.value)}
-                  className={typedStyles.editableContent}
-                  placeholder="Content"
-                  rows={3}
-                />
-                <div className={typedStyles.itemActions}>
-                  <button 
-                    className={typedStyles.removeButton}
-                    onClick={() => handleRemoveItem('tools', index)}
-                  >
-                    Remove Item
-                  </button>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-        
-        {editedContent.prompts && editedContent.prompts.length > 0 && (
-          <>
-            <h3 className={typedStyles.categoryHeading}>Prompts</h3>
-            {editedContent.prompts.map((item, index) => (
-              <div key={`prompts-${index}`} className={typedStyles.itemCard}>
-                <input
-                  type="text"
-                  value={item.title}
-                  onChange={(e) => handleTitleChange('prompts', index, e.target.value)}
-                  className={typedStyles.editableTitle}
-                  placeholder="Title"
-                />
-                <textarea
-                  value={item.content}
-                  onChange={(e) => handleContentChange('prompts', index, e.target.value)}
-                  className={typedStyles.editableContent}
-                  placeholder="Content"
-                  rows={3}
-                />
-                <div className={typedStyles.itemActions}>
-                  <button 
-                    className={typedStyles.removeButton}
-                    onClick={() => handleRemoveItem('prompts', index)}
-                  >
-                    Remove Item
-                  </button>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-        
-        {/* Post buttons */}
-        <div className={typedStyles.buttonGroup}>
-          <button 
-            onClick={handlePost} 
-            disabled={loadingPost}
-            className={typedStyles.button}
-          >
-            {loadingPost ? 'Posting All to Slack...' : 'Post All to Slack'}
-          </button>
-          <button 
-            onClick={handlePostExtractedOnly} 
-            disabled={loadingPost}
-            className={typedStyles.button}
-          >
-            {loadingPost ? 'Posting...' : 'Post Items Only'}
-          </button>
-        </div>
-        
-        {/* Post result */}
-        {postResult && (
-          <div className={typedStyles.result}>
-            <h3>Posted to Slack</h3>
-            <pre>{JSON.stringify(postResult, null, 2)}</pre>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   // Left sidebar content
   const leftSidebar = (
     <>
@@ -485,8 +349,27 @@ export default function Home() {
         </div>
       )}
       
-      {/* Render extracted content if available */}
-      {extractResult && renderExtractedContentForReview()}
+      {/* Render extracted content with comprehensive review component */}
+      {extractResult && (
+        <ContentReview
+          editedContent={editedContent}
+          postResult={postResult}
+          loadingPost={loadingPost}
+          loadingRegenerate={loadingRegenerate}
+          onTitleChange={handleTitleChange}
+          onContentChange={handleContentChange}
+          onUrlChange={handleUrlChange}
+          onRemoveItem={handleRemoveItem}
+          onRemoveQuizQuestion={handleRemoveQuizQuestion}
+          onRemoveVocabItem={handleRemoveVocabItem}
+          onRegenerateItemContent={handleRegenerateItemContent}
+          onPostSingleItem={handlePostSingleItem}
+          onPost={handlePost}
+          onPostExtractedOnly={handlePostExtractedOnly}
+          onPostQuizVocabAsReplies={handlePostQuizVocabAsReplies}
+          styles={typedStyles}
+        />
+      )}
     </>
   );
 
