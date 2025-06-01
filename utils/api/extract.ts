@@ -93,7 +93,7 @@ Rules:
 - category must be: "news", "tools", or "prompts"
 - Only extract real, substantial content
 - No duplicates or placeholders
-- Keep content under 200 chars
+- Keep content around 500 chars for detailed summaries
 - Use null for missing url/imageUrl
 - Include ${clipboardImageCount} clipboard images if relevant
 - Return ONLY the JSON object`;

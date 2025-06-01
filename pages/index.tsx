@@ -1,10 +1,168 @@
 // pages/index.tsx
-import { useState, ChangeEvent, FormEvent, useEffect, ClipboardEvent } from 'react';
+import { useState, ChangeEvent, useEffect, ClipboardEvent } from 'react';
 import styles from '../styles/Home.module.css';
 import ChannelSelector from '../components/ChannelSelector';
 import LogDisplay from '../components/LogDisplay';
 import { useLogs } from '../contexts/LogContext';
-import Link from 'next/link';
+
+// Simple inline QuizReportSidebar component
+interface UserScore {
+  userId: string;
+  username: string;
+  score: number;
+  totalAnswered: number;
+  correctAnswers: number;
+  accuracy: number;
+}
+
+interface QuestionStat {
+  attempts: number;
+  correct: number;
+  question: string;
+  quizId: string;
+  questionIndex: number;
+  correctPercentage: number;
+}
+
+interface QuizStats {
+  totalResponses: number;
+  uniqueUsers: number;
+  questionStats: QuestionStat[];
+}
+
+interface ReportData {
+  userScores: UserScore[];
+  quizStats: QuizStats;
+}
+
+const QuizReportSidebar = () => {
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchReportData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/quiz-report');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setReportData(data);
+    } catch (err) {
+      console.error('Error fetching report data:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReportData();
+  }, []);
+
+  const sidebarStyle = {
+    height: '100%',
+    padding: '16px',
+    fontSize: '14px',
+    color: '#333',
+  };
+
+  if (loading) {
+    return (
+      <div style={sidebarStyle}>
+        <h3>Quiz Performance</h3>
+        <div>Loading...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={sidebarStyle}>
+        <h3>Quiz Performance</h3>
+        <div>Error: {error}</div>
+        <button onClick={fetchReportData}>Retry</button>
+      </div>
+    );
+  }
+
+  if (!reportData) {
+    return (
+      <div style={sidebarStyle}>
+        <h3>Quiz Performance</h3>
+        <div>No data available</div>
+      </div>
+    );
+  }
+
+  const avgAccuracy = reportData.userScores?.length > 0 
+    ? Math.round(reportData.userScores.reduce((sum: number, user: UserScore) => sum + user.accuracy, 0) / reportData.userScores.length) 
+    : 0;
+
+  return (
+    <div style={sidebarStyle}>
+      <h3>Quiz Performance</h3>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
+        <div style={{ background: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+          <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{reportData.quizStats?.totalResponses || 0}</div>
+          <div style={{ fontSize: '10px', color: '#666' }}>Responses</div>
+        </div>
+        <div style={{ background: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+          <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{reportData.quizStats?.uniqueUsers || 0}</div>
+          <div style={{ fontSize: '10px', color: '#666' }}>Users</div>
+        </div>
+        <div style={{ background: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+          <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{avgAccuracy}%</div>
+          <div style={{ fontSize: '10px', color: '#666' }}>Avg Accuracy</div>
+        </div>
+        <div style={{ background: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+          <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{reportData.quizStats?.questionStats?.length || 0}</div>
+          <div style={{ fontSize: '10px', color: '#666' }}>Questions</div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '16px' }}>
+        <h4 style={{ fontSize: '14px', borderBottom: '1px solid #ddd', paddingBottom: '4px' }}>🏆 Top Users</h4>
+        {reportData.userScores?.slice(0, 5).map((user: UserScore, index: number) => (
+          <div key={user.userId} style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            padding: '4px 8px', 
+            background: index === 0 ? '#fff9e6' : 'white',
+            borderRadius: '4px',
+            marginBottom: '2px',
+            fontSize: '11px'
+          }}>
+            <span>{index + 1}. {user.username}</span>
+            <span>{user.score} pts</span>
+          </div>
+        )) || <div>No users yet</div>}
+      </div>
+
+      <button 
+        onClick={fetchReportData}
+        style={{
+          width: '100%',
+          padding: '8px',
+          background: '#0070f3',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '12px'
+        }}
+      >
+        Refresh
+      </button>
+    </div>
+  );
+};
 
 // Define styles type to include all CSS classes
 interface Styles {
@@ -60,18 +218,15 @@ interface Styles {
   twoColumnLayout: string;
   logsColumn: string;
   mainColumn: string;
+  leftSidebar: string;
+  logsSection: string;
+  mainContent: string;
+  threeColumnLayout: string;
+  rightSidebar: string;
 }
 
 // Type assertion for styles import
 const typedStyles = styles as Styles;
-
-interface FormData {
-  title: string;
-  summary: string;
-  url: string;
-  pictureUrl: string;
-  category: string;
-}
 
 interface QuizQuestion {
   question: string;
@@ -82,17 +237,6 @@ interface QuizQuestion {
 interface VocabularyItem {
   term: string;
   definition: string;
-}
-
-interface ResultData {
-  title: string;
-  summary: string;
-  url: string | null;
-  pictureUrl: string | null;
-  category: string;
-  quiz: QuizQuestion[];
-  vocabulary: VocabularyItem[];
-  slackMessageId: string;
 }
 
 interface ExtractedItem {
@@ -127,24 +271,14 @@ interface PostResult {
 }
 
 export default function Home() {
-  const [formData, setFormData] = useState<FormData>({
-    title: '',
-    summary: '',
-    url: '',
-    pictureUrl: '',
-    category: 'news',
-  });
   const [pastedText, setPastedText] = useState<string>('');
   const [pastedImages, setPastedImages] = useState<string[]>([]);
   const [pastedUrls, setPastedUrls] = useState<string[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
   const [loadingExtract, setLoadingExtract] = useState<boolean>(false);
   const [loadingPost, setLoadingPost] = useState<boolean>(false);
   const [loadingRegenerate, setLoadingRegenerate] = useState<boolean>(false);
-  const [result, setResult] = useState<ResultData | null>(null);
   const [extractResult, setExtractResult] = useState<ExtractResult | null>(null);
   const [postResult, setPostResult] = useState<PostResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'manual' | 'extract'>('extract');
   const [editedContent, setEditedContent] = useState<ExtractedContent | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<string>('C08ST272AAG'); // Default channel
   
@@ -157,9 +291,32 @@ export default function Home() {
     }
   }, [extractResult]);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  // Enhanced logging to capture console logs
+  useEffect(() => {
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+
+    console.log = (...args) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      addLog(`LOG: ${message}`);
+      originalConsoleLog(...args);
+    };
+
+    console.error = (...args) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      addLog(`ERROR: ${message}`);
+      originalConsoleError(...args);
+    };
+
+    return () => {
+      console.log = originalConsoleLog;
+      console.error = originalConsoleError;
+    };
+  }, [addLog]);
 
   const handlePastedTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setPastedText(e.target.value);
@@ -233,24 +390,6 @@ export default function Home() {
         });
       }
     }
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
-      setResult(data);
-    } catch (error) {
-      console.error(error);
-      alert('Error generating content');
-    }
-    setLoading(false);
   };
 
   const handleExtract = async () => {
@@ -814,7 +953,7 @@ export default function Home() {
     setLoadingPost(false);
   };
 
-  // Add preview section for images and links
+  // Updated pasted media preview with shortened URLs
   const renderPastedMediaPreview = () => {
     if (pastedImages.length === 0 && pastedUrls.length === 0) return null;
     
@@ -822,16 +961,16 @@ export default function Home() {
       <div className={typedStyles.pastedMediaPreview}>
         {pastedImages.length > 0 && (
           <div className={typedStyles.pastedImagesContainer}>
-            <h4>Pasted Images:</h4>
+            <h4>Images ({pastedImages.length}):</h4>
             <div className={typedStyles.imageGrid}>
               {pastedImages.map((imgSrc, index) => (
                 <div key={`img-${index}`} className={typedStyles.pastedImage}>
-                  <img src={imgSrc} alt={`Pasted image ${index + 1}`} />
+                  <img src={imgSrc} alt={`Image ${index + 1}`} />
                   <button 
                     className={typedStyles.removeButton} 
                     onClick={() => setPastedImages(prev => prev.filter((_, i) => i !== index))}
                   >
-                    Remove
+                    ×
                   </button>
                 </div>
               ))}
@@ -841,19 +980,25 @@ export default function Home() {
         
         {pastedUrls.length > 0 && (
           <div className={typedStyles.pastedUrlsContainer}>
-            <h4>Detected URLs:</h4>
+            <h4>URLs ({pastedUrls.length}):</h4>
             <ul className={typedStyles.urlList}>
-              {pastedUrls.map((url, index) => (
-                <li key={`url-${index}`} className={typedStyles.urlItem}>
-                  <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>
-                  <button 
-                    className={typedStyles.removeButton} 
-                    onClick={() => setPastedUrls(prev => prev.filter((_, i) => i !== index))}
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
+              {pastedUrls.map((url, index) => {
+                // Shorten URL for display
+                const displayUrl = url.length > 40 ? `${url.substring(0, 37)}...` : url;
+                return (
+                  <li key={`url-${index}`} className={typedStyles.urlItem}>
+                    <a href={url} target="_blank" rel="noopener noreferrer" title={url}>
+                      {displayUrl}
+                    </a>
+                    <button 
+                      className={typedStyles.removeButton} 
+                      onClick={() => setPastedUrls(prev => prev.filter((_, i) => i !== index))}
+                    >
+                      ×
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -868,144 +1013,56 @@ export default function Home() {
           Slack Content Poster
         </h1>
         
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '20px' }}>
-          <Link href="/quizzes" style={{ textDecoration: 'underline', color: '#0070f3' }}>
-            View Quiz Library
-          </Link>
-          <Link href="/quiz-report" style={{ textDecoration: 'underline', color: '#0070f3' }}>
-            View Quiz Performance Report
-          </Link>
-        </div>
-        
         <ChannelSelector
           selectedChannel={selectedChannel}
           onChannelChange={setSelectedChannel}
         />
         
-        <div className={typedStyles.tabs}>
-          <button
-            className={`${typedStyles.tabButton} ${activeTab === 'extract' ? typedStyles.activeTab : ''}`}
-            onClick={() => setActiveTab('extract')}
-          >
-            Extract from Text
-          </button>
-          <button
-            className={`${typedStyles.tabButton} ${activeTab === 'manual' ? typedStyles.activeTab : ''}`}
-            onClick={() => setActiveTab('manual')}
-          >
-            Manual Entry
-          </button>
-        </div>
-        
-        <div className={typedStyles.twoColumnLayout}>
-          <div className={typedStyles.logsColumn}>
-            <h3>Processing Logs</h3>
-            <LogDisplay logs={logs} />
+        <div className={typedStyles.threeColumnLayout}>
+          {/* Left Sidebar - Media and Logs */}
+          <div className={typedStyles.leftSidebar}>
+            {renderPastedMediaPreview()}
+            
+            <div className={typedStyles.logsSection}>
+              <h3>Processing Logs</h3>
+              <LogDisplay logs={logs} />
+            </div>
           </div>
           
-          <div className={typedStyles.mainColumn}>
-            {activeTab === 'extract' ? (
-              <div className={typedStyles.extractContainer}>
-                <textarea
-                  className={typedStyles.extractTextarea}
-                  placeholder="Paste content here (text, links, or images)..."
-                  value={pastedText}
-                  onChange={handlePastedTextChange}
-                  onPaste={handlePaste}
-                  rows={10}
-                />
-                
-                {/* Render pasted media preview if available */}
-                {renderPastedMediaPreview()}
-                
-                <button
-                  className={typedStyles.button}
-                  onClick={handleExtract}
-                  disabled={loadingExtract}
-                >
-                  {loadingExtract ? (
-                    <>
-                      <span className={typedStyles.loadingSpinner}></span> Extracting...
-                    </>
-                  ) : (
-                    'Extract Content'
-                  )}
-                </button>
-                
-                {/* Render extracted content if available */}
-                {extractResult && renderExtractedContentForReview()}
-                {/* ... existing result actions ... */}
-              </div>
-            ) : (
-              <form className={typedStyles.form} onSubmit={handleSubmit}>
-                <label className={typedStyles.label}>
-                  Title:
-                  <input
-                    type="text"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    required
-                    className={typedStyles.input}
-                  />
-                </label>
-                <label className={typedStyles.label}>
-                  Summary:
-                  <textarea
-                    name="summary"
-                    value={formData.summary}
-                    onChange={handleChange}
-                    required
-                    className={typedStyles.textarea}
-                  />
-                </label>
-                <label className={typedStyles.label}>
-                  URL:
-                  <input
-                    type="url"
-                    name="url"
-                    value={formData.url}
-                    onChange={handleChange}
-                    className={typedStyles.input}
-                  />
-                </label>
-                <label className={typedStyles.label}>
-                  Picture URL:
-                  <input
-                    type="url"
-                    name="pictureUrl"
-                    value={formData.pictureUrl}
-                    onChange={handleChange}
-                    className={typedStyles.input}
-                  />
-                </label>
-                <label className={typedStyles.label}>
-                  Category:
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleChange}
-                    className={typedStyles.select}
-                  >
-                    <option value="news">News</option>
-                    <option value="tools">Tools</option>
-                    <option value="prompt">Prompt</option>
-                  </select>
-                </label>
-                <button type="submit" disabled={loading} className={typedStyles.button}>
-                  {loading ? 'Generating...' : 'Generate & Post to Slack'}
-                </button>
-                
-                {result && (
-                  <div className={typedStyles.result}>
-                    <h2>Generated Content</h2>
-                    <pre>{JSON.stringify(result, null, 2)}</pre>
-                  </div>
+          {/* Main Content */}
+          <div className={typedStyles.mainContent}>
+            <div className={typedStyles.extractContainer}>
+              <textarea
+                className={typedStyles.extractTextarea}
+                placeholder="Paste content here (text, links, or images)..."
+                value={pastedText}
+                onChange={handlePastedTextChange}
+                onPaste={handlePaste}
+                rows={8}
+              />
+              
+              <button
+                className={typedStyles.button}
+                onClick={handleExtract}
+                disabled={loadingExtract}
+              >
+                {loadingExtract ? (
+                  <>
+                    <span className={typedStyles.loadingSpinner}></span> Extracting...
+                  </>
+                ) : (
+                  'Extract Content'
                 )}
-              </form>
-            )}
-            
-            {/* ... existing result display and post results ... */}
+              </button>
+              
+              {/* Render extracted content if available */}
+              {extractResult && renderExtractedContentForReview()}
+            </div>
+          </div>
+          
+          {/* Right Sidebar - Quiz Report */}
+          <div className={typedStyles.rightSidebar}>
+            <QuizReportSidebar />
           </div>
         </div>
       </main>

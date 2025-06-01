@@ -45,7 +45,8 @@ export async function convertTextToSpeech(options: TextToSpeechOptions): Promise
         model_id: modelId,
         voice_settings: {
           stability: 0.75,
-          similarity_boost: 0.75
+          similarity_boost: 0.75,
+          speed: 0.7
         }
       }),
       responseType: 'arraybuffer'

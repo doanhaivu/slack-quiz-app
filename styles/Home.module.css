@@ -580,3 +580,159 @@
   flex: 1;
   min-width: 0;
 }
+
+/* New three-column layout */
+.threeColumnLayout {
+  display: grid;
+  grid-template-columns: 300px 1fr 320px;
+  gap: 20px;
+  width: 100%;
+  margin-top: 20px;
+  height: calc(100vh - 200px);
+}
+
+.leftSidebar {
+  background-color: var(--card-background);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-y: auto;
+  box-shadow: 0 2px 4px var(--shadow-color);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rightSidebar {
+  background-color: var(--card-background);
+  border-radius: 8px;
+  padding: 0;
+  overflow-y: auto;
+  box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.mainContent {
+  background-color: var(--card-background);
+  border-radius: 8px;
+  padding: 20px;
+  overflow-y: auto;
+  box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.logsSection {
+  flex: 1;
+  min-height: 200px;
+}
+
+.logsSection h3 {
+  font-size: 16px;
+  margin-bottom: 10px;
+  color: var(--text-color);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 5px;
+}
+
+/* Update media preview for sidebar */
+.pastedMediaPreview {
+  margin: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.pastedImagesContainer h4,
+.pastedUrlsContainer h4 {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.imageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 8px;
+}
+
+.pastedImage {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+.pastedImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pastedImage .removeButton {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 10px;
+  padding: 2px 4px;
+  background-color: rgba(255, 59, 48, 0.8);
+  color: white;
+  border-radius: 3px;
+  border: none;
+  cursor: pointer;
+}
+
+.urlItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--secondary-background);
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.urlItem a {
+  color: var(--primary-color);
+  text-decoration: none;
+  flex: 1;
+  margin-right: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.urlItem .removeButton {
+  font-size: 10px;
+  padding: 2px 4px;
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+/* Responsive design for three-column layout */
+@media (max-width: 1200px) {
+  .threeColumnLayout {
+    grid-template-columns: 250px 1fr 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .threeColumnLayout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    height: auto;
+  }
+  
+  .leftSidebar,
+  .rightSidebar {
+    order: 2;
+  }
+  
+  .mainContent {
+    order: 1;
+  }
+}
