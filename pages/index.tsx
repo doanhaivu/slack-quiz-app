@@ -223,6 +223,10 @@ interface Styles {
   mainContent: string;
   threeColumnLayout: string;
   rightSidebar: string;
+  audioSection: string;
+  audioItem: string;
+  audioTitle: string;
+  audioPlayer: string;
 }
 
 // Type assertion for styles import
@@ -247,6 +251,7 @@ interface ExtractedItem {
   quiz?: QuizQuestion[];
   vocabulary?: VocabularyItem[];
   slackMessageId?: string;
+  audioUrl?: string;
 }
 
 interface ExtractedContent {
@@ -295,12 +300,14 @@ export default function Home() {
   useEffect(() => {
     const originalConsoleLog = console.log;
     const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+    const originalConsoleInfo = console.info;
 
     console.log = (...args) => {
       const message = args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ');
-      addLog(`LOG: ${message}`);
+      addLog(`${message}`);
       originalConsoleLog(...args);
     };
 
@@ -312,9 +319,27 @@ export default function Home() {
       originalConsoleError(...args);
     };
 
+    console.warn = (...args) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      addLog(`WARN: ${message}`);
+      originalConsoleWarn(...args);
+    };
+
+    console.info = (...args) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      addLog(`INFO: ${message}`);
+      originalConsoleInfo(...args);
+    };
+
     return () => {
       console.log = originalConsoleLog;
       console.error = originalConsoleError;
+      console.warn = originalConsoleWarn;
+      console.info = originalConsoleInfo;
     };
   }, [addLog]);
 
@@ -427,6 +452,11 @@ export default function Home() {
       });
       const data = await res.json();
       
+      // Add server logs to client logs
+      if (data.logs && Array.isArray(data.logs)) {
+        data.logs.forEach((log: string) => addLog(log));
+      }
+      
       addLog('Extraction completed successfully');
       if (data.extractedContent) {
         addLog(`Found ${data.extractedContent.news?.length || 0} news items, ${data.extractedContent.tools?.length || 0} tools, and ${data.extractedContent.prompts?.length || 0} prompts`);
@@ -461,6 +491,12 @@ export default function Home() {
         }),
       });
       const data = await res.json();
+      
+      // Add server logs to client logs
+      if (data.logs && Array.isArray(data.logs)) {
+        data.logs.forEach((log: string) => addLog(log));
+      }
+      
       addLog('Content successfully posted to Slack');
       setPostResult(data);
     } catch (error) {
@@ -491,6 +527,11 @@ export default function Home() {
         }),
       });
       const data = await res.json();
+      
+      // Add server logs to client logs
+      if (data.logs && Array.isArray(data.logs)) {
+        data.logs.forEach((log: string) => addLog(log));
+      }
       
       addLog('Items successfully posted to Slack');
       
@@ -525,6 +566,12 @@ export default function Home() {
         }),
       });
       const data = await res.json();
+      
+      // Add server logs to client logs
+      if (data.logs && Array.isArray(data.logs)) {
+        data.logs.forEach((log: string) => addLog(log));
+      }
+      
       addLog('Vocabulary and quizzes successfully posted as replies');
       setPostResult(data);
     } catch (error) {
@@ -953,9 +1000,36 @@ export default function Home() {
     setLoadingPost(false);
   };
 
-  // Updated pasted media preview with shortened URLs
+  // Add function to render audio section
+  const renderAudioSection = () => {
+    if (!editedContent) return null;
+    
+    const newsItemsWithAudio = editedContent.news.filter(item => item.audioUrl);
+    
+    if (newsItemsWithAudio.length === 0) return null;
+    
+    return (
+      <div className={typedStyles.audioSection}>
+        <h4>Audio ({newsItemsWithAudio.length}):</h4>
+        {newsItemsWithAudio.map((item, index) => (
+          <div key={`audio-${index}`} className={typedStyles.audioItem}>
+            <div className={typedStyles.audioTitle}>{item.title}</div>
+            <audio controls className={typedStyles.audioPlayer}>
+              <source src={item.audioUrl} type="audio/mpeg" />
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Updated pasted media preview with shortened URLs and audio section
   const renderPastedMediaPreview = () => {
-    if (pastedImages.length === 0 && pastedUrls.length === 0) return null;
+    const hasMedia = pastedImages.length > 0 || pastedUrls.length > 0;
+    const hasAudio = editedContent && editedContent.news.some(item => item.audioUrl);
+    
+    if (!hasMedia && !hasAudio) return null;
     
     return (
       <div className={typedStyles.pastedMediaPreview}>
@@ -1002,6 +1076,9 @@ export default function Home() {
             </ul>
           </div>
         )}
+        
+        {/* Audio section */}
+        {renderAudioSection()}
       </div>
     );
   };

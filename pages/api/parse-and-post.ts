@@ -6,6 +6,59 @@ import { processNewsItem, saveQuizData } from '../../utils/api/quiz';
 import { processToolsItems, processPromptsItems } from '../../utils/api/items';
 import { postToSlack, postVocabularyAsReply, postQuizAsReply, postQuizToSlack } from '../../services/api/slack';
 
+// Server-side logging system
+class ServerLogger {
+  private logs: string[] = [];
+  private originalConsoleLog: typeof console.log;
+  private originalConsoleError: typeof console.error;
+  private originalConsoleWarn: typeof console.warn;
+  
+  constructor() {
+    this.originalConsoleLog = console.log;
+    this.originalConsoleError = console.error;
+    this.originalConsoleWarn = console.warn;
+  }
+  
+  start() {
+    this.logs = [];
+    
+    console.log = (...args) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      this.logs.push(message);
+      this.originalConsoleLog(...args);
+    };
+    
+    console.error = (...args) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      this.logs.push(`ERROR: ${message}`);
+      this.originalConsoleError(...args);
+    };
+    
+    console.warn = (...args) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      this.logs.push(`WARN: ${message}`);
+      this.originalConsoleWarn(...args);
+    };
+  }
+  
+  stop() {
+    console.log = this.originalConsoleLog;
+    console.error = this.originalConsoleError;
+    console.warn = this.originalConsoleWarn;
+    return [...this.logs];
+  }
+  
+  getLogs() {
+    return [...this.logs];
+  }
+}
+
 // Check configurations
 console.log('OpenAI API Key configured:', !!process.env.OPENAI_API_KEY);
 console.log('ElevenLabs API Key configured:', !!process.env.ELEVENLABS_API_KEY);
@@ -77,6 +130,10 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Start server-side logging
+  const serverLogger = new ServerLogger();
+  serverLogger.start();
+
   try {
     // Get channel ID from request or use default
     const channelId = req.body.channelId || SLACK_CHANNEL_ID;
@@ -89,7 +146,8 @@ export default async function handler(
       
       if ((!text || typeof text !== 'string') && (!images || !images.length) && (!urls || !urls.length)) {
         console.log('No content provided for extraction');
-        return res.status(400).json({ error: 'Text, images, or URLs are required' });
+        const logs = serverLogger.stop();
+        return res.status(400).json({ error: 'Text, images, or URLs are required', logs });
       }
 
       console.log('Calling extraction function');
@@ -100,7 +158,8 @@ export default async function handler(
       
       if (!extractedItems.length) {
         console.log('No items extracted from text');
-        return res.status(400).json({ error: 'No news, tools, or prompts found in the text' });
+        const logs = serverLogger.stop();
+        return res.status(400).json({ error: 'No news, tools, or prompts found in the text', logs });
       }
 
       // Group items by category
@@ -136,9 +195,11 @@ export default async function handler(
       }
       
       console.log('Extraction complete, sending response');
+      const logs = serverLogger.stop();
       return res.status(200).json({
         message: 'Content extracted successfully',
-        extractedContent: categorizedItems
+        extractedContent: categorizedItems,
+        logs
       });
     }
     
@@ -148,7 +209,8 @@ export default async function handler(
       const { item } = req.body;
       
       if (!item) {
-        return res.status(400).json({ error: 'Item is required' });
+        const logs = serverLogger.stop();
+        return res.status(400).json({ error: 'Item is required', logs });
       }
       
       let result;
@@ -160,9 +222,11 @@ export default async function handler(
         result = item;
       }
       
+      const logs = serverLogger.stop();
       return res.status(200).json({
         message: 'Item processed successfully',
-        item: result
+        item: result,
+        logs
       });
     }
     
@@ -808,26 +872,12 @@ export default async function handler(
       return res.status(400).json({ error: 'Invalid action' });
     }
   } catch (error) {
-    console.error('Error processing content:', {
-      error: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined,
-      action: req.body.action || 'unknown',
-      timestamp: new Date().toISOString(),
-      requestBody: {
-        action: req.body.action,
-        hasText: !!req.body.text,
-        hasImages: !!req.body.images?.length,
-        hasUrls: !!req.body.urls?.length,
-        hasExtractedContent: !!req.body.extractedContent,
-        channelId: req.body.channelId || 'default'
-      }
-    });
-    
-    res.status(500).json({ 
-      error: 'Failed to process content',
-      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined,
-      action: req.body.action || 'unknown',
-      timestamp: new Date().toISOString()
+    console.error('Error in API handler:', error);
+    const logs = serverLogger.stop();
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : String(error),
+      logs
     });
   }
 }
