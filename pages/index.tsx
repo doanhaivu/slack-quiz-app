@@ -343,6 +343,9 @@ export default function Home() {
   const [selectedChannel, setSelectedChannel] = useState<string>('C08ST272AAG'); // Default channel
   const [isTextareaCollapsed, setIsTextareaCollapsed] = useState<boolean>(false);
   const [showTextarea, setShowTextarea] = useState<boolean>(true);
+  const [extractionProgress, setExtractionProgress] = useState<number>(0);
+  const [extractionStatus, setExtractionStatus] = useState<string>('');
+  const [isExtracting, setIsExtracting] = useState<boolean>(false);
   
   const { logs, addLog, clearLogs } = useLogs();
   
@@ -494,20 +497,36 @@ export default function Home() {
     }
     
     setLoadingExtract(true);
+    setIsExtracting(true);
     setExtractResult(null);
     setPostResult(null);
     setIsTextareaCollapsed(true); // Collapse textarea when extracting
+    setExtractionProgress(0);
     clearLogs();
     
-    addLog('Starting content extraction...');
-    addLog(`Processing paste with ${pastedUrls.length} URLs and ${pastedImages.length} images`);
-    
     try {
+      // Stage 1: Preparation
+      setExtractionStatus('🔄 Preparing content for extraction...');
+      setExtractionProgress(10);
+      await new Promise(resolve => setTimeout(resolve, 300)); // Small delay for UX
+      
+      addLog('Starting content extraction...');
+      addLog(`Processing paste with ${pastedUrls.length} URLs and ${pastedImages.length} images`);
+      
+      // Stage 2: Validation
+      setExtractionStatus('✅ Validating content and media...');
+      setExtractionProgress(20);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       // Improve logging for debugging image issues
       addLog(`Sending ${pastedImages.length} images and ${pastedUrls.length} URLs to API`);
       if (pastedImages.length > 0) {
         addLog(`First image preview: ${pastedImages[0].substring(0, 30)}...`);
       }
+      
+      // Stage 3: Sending to API
+      setExtractionStatus('🚀 Sending content to processing engine...');
+      setExtractionProgress(30);
       
       // Include images and URLs in the extraction request
       const res = await fetch('/api/parse-and-post', {
@@ -521,23 +540,56 @@ export default function Home() {
           channelId: selectedChannel // Add channel ID to the request
         }),
       });
+      
+      // Stage 4: Processing Response
+      setExtractionStatus('🤖 AI is analyzing and extracting content...');
+      setExtractionProgress(60);
+      
       const data = await res.json();
+      
+      // Stage 5: Processing Results
+      setExtractionStatus('📝 Processing extracted items...');
+      setExtractionProgress(80);
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // Add server logs to client logs
       if (data.logs && Array.isArray(data.logs)) {
         data.logs.forEach((log: string) => addLog(log));
       }
       
+      // Stage 6: Finalizing
+      setExtractionStatus('🎯 Finalizing results...');
+      setExtractionProgress(95);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       addLog('Extraction completed successfully');
       if (data.extractedContent) {
         addLog(`Found ${data.extractedContent.news?.length || 0} news items, ${data.extractedContent.tools?.length || 0} tools, and ${data.extractedContent.prompts?.length || 0} prompts`);
       }
       
+      // Stage 7: Complete
+      setExtractionStatus('✨ Extraction completed successfully!');
+      setExtractionProgress(100);
+      
       setExtractResult(data);
+      
+      // Auto-hide progress bar after completion
+      setTimeout(() => {
+        setIsExtracting(false);
+        setExtractionProgress(0);
+      }, 2000);
+      
     } catch (error) {
       console.error('Error extracting content:', error);
       addLog(`Error extracting content: ${error}`);
+      setExtractionStatus('❌ Extraction failed - please try again');
+      setExtractionProgress(0);
       alert('Error extracting content');
+      
+      // Hide progress bar on error
+      setTimeout(() => {
+        setIsExtracting(false);
+      }, 3000);
     }
     setLoadingExtract(false);
   };
@@ -1154,6 +1206,70 @@ export default function Home() {
     );
   };
 
+  // Progress Bar Component
+  const ProgressBar = ({ progress, status, isVisible }: { progress: number, status: string, isVisible: boolean }) => {
+    if (!isVisible) return null;
+    
+    return (
+      <div style={{
+        margin: '16px 0',
+        padding: '16px',
+        backgroundColor: '#f8f9fa',
+        borderRadius: '8px',
+        border: '1px solid #e9ecef'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '8px'
+        }}>
+          <span style={{ 
+            fontSize: '14px', 
+            fontWeight: '500',
+            color: '#495057'
+          }}>
+            {status}
+          </span>
+          <span style={{ 
+            fontSize: '12px', 
+            color: '#6c757d',
+            fontWeight: '600'
+          }}>
+            {Math.round(progress)}%
+          </span>
+        </div>
+        
+        <div style={{
+          width: '100%',
+          height: '8px',
+          backgroundColor: '#e9ecef',
+          borderRadius: '4px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            width: `${progress}%`,
+            height: '100%',
+            backgroundColor: progress === 100 ? '#28a745' : '#007bff',
+            transition: 'width 0.3s ease, background-color 0.3s ease',
+            borderRadius: '4px'
+          }} />
+        </div>
+        
+        {progress === 100 && (
+          <div style={{
+            marginTop: '8px',
+            fontSize: '12px',
+            color: '#28a745',
+            fontWeight: '500'
+          }}>
+            ✅ Extraction completed successfully!
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className={typedStyles.container}>
       <main>
@@ -1229,6 +1345,13 @@ export default function Home() {
                     </button>
                   </>
                 )}
+                
+                {/* Progress Bar */}
+                <ProgressBar 
+                  progress={extractionProgress} 
+                  status={extractionStatus} 
+                  isVisible={isExtracting} 
+                />
               </div>
             )}
             
