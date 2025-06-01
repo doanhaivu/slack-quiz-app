@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { calculateUserScores, getQuizStatistics, getAvailableWeeks } from '../../utils/responses';
+import { calculateUserScores, getQuizStatistics, getAvailableWeeks } from '../../services/quiz';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
