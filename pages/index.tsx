@@ -33,19 +33,27 @@ interface QuizStats {
 interface ReportData {
   userScores: UserScore[];
   quizStats: QuizStats;
+  availableWeeks: string[];
+  currentWeek: string;
 }
 
 const QuizReportSidebar = () => {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<string>('all');
+  const [availableWeeks, setAvailableWeeks] = useState<string[]>([]);
 
-  const fetchReportData = async () => {
+  const fetchReportData = async (week?: string) => {
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch('/api/quiz-report');
+      const url = week && week !== 'all' 
+        ? `/api/quiz-report?week=${encodeURIComponent(week)}`
+        : '/api/quiz-report';
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.statusText}`);
@@ -53,6 +61,8 @@ const QuizReportSidebar = () => {
       
       const data = await response.json();
       setReportData(data);
+      setAvailableWeeks(data.availableWeeks || []);
+      setSelectedWeek(data.currentWeek || 'all');
     } catch (err) {
       console.error('Error fetching report data:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -64,6 +74,23 @@ const QuizReportSidebar = () => {
   useEffect(() => {
     fetchReportData();
   }, []);
+
+  const handleWeekChange = (week: string) => {
+    setSelectedWeek(week);
+    fetchReportData(week);
+  };
+
+  const formatWeekDisplay = (weekString: string) => {
+    if (weekString === 'all') return 'All Time';
+    
+    const date = new Date(weekString);
+    const endDate = new Date(date);
+    endDate.setDate(date.getDate() + 6);
+    
+    const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    
+    return `${formatDate(date)} - ${formatDate(endDate)}`;
+  };
 
   const sidebarStyle = {
     height: '100%',
@@ -86,7 +113,7 @@ const QuizReportSidebar = () => {
       <div style={sidebarStyle}>
         <h3>Quiz Performance</h3>
         <div>Error: {error}</div>
-        <button onClick={fetchReportData}>Retry</button>
+        <button onClick={() => fetchReportData(selectedWeek)}>Retry</button>
       </div>
     );
   }
@@ -107,6 +134,34 @@ const QuizReportSidebar = () => {
   return (
     <div style={sidebarStyle}>
       <h3>Quiz Performance</h3>
+      
+      {/* Week selector */}
+      {availableWeeks.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', display: 'block' }}>
+            Time Period:
+          </label>
+          <select 
+            value={selectedWeek} 
+            onChange={(e) => handleWeekChange(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '6px 8px',
+              fontSize: '12px',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              backgroundColor: 'white'
+            }}
+          >
+            <option value="all">All Time</option>
+            {availableWeeks.map(week => (
+              <option key={week} value={week}>
+                {formatWeekDisplay(week)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
         <div style={{ background: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
@@ -146,7 +201,7 @@ const QuizReportSidebar = () => {
       </div>
 
       <button 
-        onClick={fetchReportData}
+        onClick={() => fetchReportData(selectedWeek)}
         style={{
           width: '100%',
           padding: '8px',
@@ -286,6 +341,8 @@ export default function Home() {
   const [postResult, setPostResult] = useState<PostResult | null>(null);
   const [editedContent, setEditedContent] = useState<ExtractedContent | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<string>('C08ST272AAG'); // Default channel
+  const [isTextareaCollapsed, setIsTextareaCollapsed] = useState<boolean>(false);
+  const [showTextarea, setShowTextarea] = useState<boolean>(true);
   
   const { logs, addLog, clearLogs } = useLogs();
   
@@ -295,6 +352,19 @@ export default function Home() {
       setEditedContent(JSON.parse(JSON.stringify(extractResult.extractedContent)));
     }
   }, [extractResult]);
+
+  // Scroll detection to show/hide textarea
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const shouldShow = scrollY < 100; // Show when scrolled near top
+      
+      setShowTextarea(shouldShow);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Enhanced logging to capture console logs
   useEffect(() => {
@@ -426,6 +496,7 @@ export default function Home() {
     setLoadingExtract(true);
     setExtractResult(null);
     setPostResult(null);
+    setIsTextareaCollapsed(true); // Collapse textarea when extracting
     clearLogs();
     
     addLog('Starting content extraction...');
@@ -1108,33 +1179,86 @@ export default function Home() {
           
           {/* Main Content */}
           <div className={typedStyles.mainContent}>
-            <div className={typedStyles.extractContainer}>
-              <textarea
-                className={typedStyles.extractTextarea}
-                placeholder="Paste content here (text, links, or images)..."
-                value={pastedText}
-                onChange={handlePastedTextChange}
-                onPaste={handlePaste}
-                rows={8}
-              />
-              
-              <button
-                className={typedStyles.button}
-                onClick={handleExtract}
-                disabled={loadingExtract}
-              >
-                {loadingExtract ? (
+            {/* Collapsible Extract Container */}
+            {(showTextarea || !isTextareaCollapsed) && (
+              <div className={typedStyles.extractContainer}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px' }}>Content Extraction</h3>
+                  <button
+                    onClick={() => setIsTextareaCollapsed(!isTextareaCollapsed)}
+                    style={{
+                      background: 'none',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      cursor: 'pointer',
+                      fontSize: '12px'
+                    }}
+                  >
+                    {isTextareaCollapsed ? '▼ Expand' : '▲ Collapse'}
+                  </button>
+                </div>
+                
+                {!isTextareaCollapsed && (
                   <>
-                    <span className={typedStyles.loadingSpinner}></span> Extracting...
+                    <textarea
+                      className={typedStyles.extractTextarea}
+                      placeholder="Paste content here (text, links, or images)..."
+                      value={pastedText}
+                      onChange={handlePastedTextChange}
+                      onPaste={handlePaste}
+                      rows={isTextareaCollapsed ? 3 : 6}
+                      style={{ 
+                        height: isTextareaCollapsed ? '80px' : '200px',
+                        transition: 'height 0.3s ease'
+                      }}
+                    />
+                    
+                    <button
+                      className={typedStyles.button}
+                      onClick={handleExtract}
+                      disabled={loadingExtract}
+                    >
+                      {loadingExtract ? (
+                        <>
+                          <span className={typedStyles.loadingSpinner}></span> Extracting...
+                        </>
+                      ) : (
+                        'Extract Content'
+                      )}
+                    </button>
                   </>
-                ) : (
-                  'Extract Content'
                 )}
-              </button>
-              
-              {/* Render extracted content if available */}
-              {extractResult && renderExtractedContentForReview()}
-            </div>
+              </div>
+            )}
+            
+            {/* Floating extract button when textarea is hidden */}
+            {!showTextarea && isTextareaCollapsed && (
+              <div style={{
+                position: 'fixed',
+                top: '20px',
+                right: '50%',
+                transform: 'translateX(50%)',
+                zIndex: 1000,
+                padding: '8px 16px',
+                backgroundColor: '#0070f3',
+                color: 'white',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+              }}
+              onClick={() => {
+                setIsTextareaCollapsed(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              >
+                📝 Add New Content
+              </div>
+            )}
+            
+            {/* Render extracted content if available */}
+            {extractResult && renderExtractedContentForReview()}
           </div>
           
           {/* Right Sidebar - Quiz Report */}

@@ -40,10 +40,69 @@ export async function getAllResponses(): Promise<QuizResponse[]> {
 }
 
 /**
+ * Get the start and end dates for a given week string (e.g., "2024-01-15")
+ */
+function getWeekRange(weekString: string): { start: Date, end: Date } {
+  const date = new Date(weekString);
+  const day = date.getDay();
+  const start = new Date(date);
+  start.setDate(date.getDate() - day); // Go to Sunday
+  start.setHours(0, 0, 0, 0);
+  
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6); // Go to Saturday
+  end.setHours(23, 59, 59, 999);
+  
+  return { start, end };
+}
+
+/**
+ * Get available weeks from responses
+ */
+export async function getAvailableWeeks(): Promise<string[]> {
+  const responses = await getAllResponses();
+  
+  if (responses.length === 0) {
+    return [];
+  }
+  
+  // Get unique weeks from timestamps
+  const weeks = new Set<string>();
+  
+  for (const response of responses) {
+    const date = new Date(response.timestamp);
+    const sunday = new Date(date);
+    sunday.setDate(date.getDate() - date.getDay()); // Go to Sunday
+    const weekString = sunday.toISOString().split('T')[0]; // YYYY-MM-DD format
+    weeks.add(weekString);
+  }
+  
+  // Sort weeks in descending order (newest first)
+  return Array.from(weeks).sort((a, b) => b.localeCompare(a));
+}
+
+/**
+ * Filter responses by week
+ */
+function filterResponsesByWeek(responses: QuizResponse[], weekString?: string): QuizResponse[] {
+  if (!weekString || weekString === 'all') {
+    return responses;
+  }
+  
+  const { start, end } = getWeekRange(weekString);
+  
+  return responses.filter(response => {
+    const responseDate = new Date(response.timestamp);
+    return responseDate >= start && responseDate <= end;
+  });
+}
+
+/**
  * Calculate user scores based on quiz responses
  */
-export async function calculateUserScores(): Promise<UserScore[]> {
-  const responses = await getAllResponses();
+export async function calculateUserScores(weekFilter?: string): Promise<UserScore[]> {
+  const allResponses = await getAllResponses();
+  const responses = filterResponsesByWeek(allResponses, weekFilter);
   
   // Create a map to track first attempts per user per question
   const userFirstAttempts = new Map<string, Set<string>>();
@@ -129,8 +188,9 @@ export async function calculateUserScores(): Promise<UserScore[]> {
 /**
  * Get detailed quiz statistics
  */
-export async function getQuizStatistics() {
-  const responses = await getAllResponses();
+export async function getQuizStatistics(weekFilter?: string) {
+  const allResponses = await getAllResponses();
+  const responses = filterResponsesByWeek(allResponses, weekFilter);
   
   // Track first attempts only
   const firstAttempts = new Map<string, Map<string, QuizResponse>>();
