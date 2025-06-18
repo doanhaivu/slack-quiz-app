@@ -132,7 +132,7 @@ const LunchAdminPage: NextPage = () => {
               cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
-            📬 Post Today's Lunch Message
+            📬 Post Today&apos;s Lunch Message
           </button>
           
           <button
@@ -153,7 +153,7 @@ const LunchAdminPage: NextPage = () => {
 
         {summary && (
           <div>
-            <h2>📊 Today's Summary - {summary.date}</h2>
+            <h2>📊 Today&apos;s Summary - {summary.date}</h2>
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
@@ -216,7 +216,7 @@ const LunchAdminPage: NextPage = () => {
               </div>
 
               <div>
-                <h3>⏳ Haven't Ordered Yet ({summary.summary.nonOrderedUsers.length})</h3>
+                <h3>⏳ Haven&apos;t Ordered Yet ({summary.summary.nonOrderedUsers.length})</h3>
                 <div style={{ 
                   maxHeight: '200px', 
                   overflowY: 'auto', 
@@ -277,7 +277,7 @@ const LunchAdminPage: NextPage = () => {
 
         {!summary && !loading && (
           <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-            <p>No lunch orders found for today. Click "Post Today's Lunch Message" to get started!</p>
+            <p>No lunch orders found for today. Click &quot;Post Today&apos;s Lunch Message&quot; to get started!</p>
           </div>
         )}
       </div>

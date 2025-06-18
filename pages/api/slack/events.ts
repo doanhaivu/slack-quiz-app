@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextApiRequest, NextApiResponse } from 'next';
 import { WebClient } from '@slack/web-api';
 import OpenAI from 'openai';
@@ -136,7 +137,6 @@ async function handleAudioReply(eventData: SlackEvent['event']) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractNewsTextFromMessage(message: any): string | null {
   try {
     // Extract text from Slack message blocks
@@ -170,7 +170,6 @@ function extractNewsTextFromMessage(message: any): string | null {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function processAudioFile(
   audioFile: any,
   originalText: string,

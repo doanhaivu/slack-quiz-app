@@ -82,4 +82,16 @@ export interface TextToSpeechOptions {
   text: string;
   voiceId?: string;
   modelId?: string;
+}
+
+// Post result interface
+export interface PostResult {
+  message: string;
+  results: Array<{
+    category: string;
+    title?: string;
+    action?: string;
+    count?: number;
+    slackMessageId?: string;
+  }>;
 } 

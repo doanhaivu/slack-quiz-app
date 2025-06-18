@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ExtractedItem } from '../types';
+import { ExtractedItem, PostResult } from '../types';
 
 interface ExtractedContent {
   news: ExtractedItem[];
@@ -7,16 +7,7 @@ interface ExtractedContent {
   prompts: ExtractedItem[];
 }
 
-interface PostResult {
-  message: string;
-  results: Array<{
-    category: string;
-    title?: string;
-    action?: string;
-    count?: number;
-    slackMessageId?: string;
-  }>;
-}
+
 
 export function useContentExtraction() {
   const [pastedText, setPastedText] = useState<string>('');

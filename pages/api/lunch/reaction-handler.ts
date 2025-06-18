@@ -108,6 +108,11 @@ async function updateLunchMessage(channelId: string, orderData: LunchOrderData) 
   const deadline = orderData.scheduledTime === "09:30" ? "11:00 AM" : "12:00 PM";
 
   try {
+    if (!orderData.messageTs) {
+      console.error('No messageTs found for order data');
+      return;
+    }
+
     await slack.chat.update({
       channel: channelId,
       ts: orderData.messageTs,

@@ -129,7 +129,7 @@ async function handleSendReminder(req: NextApiRequest, res: NextApiResponse) {
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: `🚨 *Last Call for Lunch Orders!*\n\nTime is running out to place your lunch order!\n\n*Still waiting on:*\n${nonOrderedUsers.map(user => `• ${user.username}`).join('\n')}\n\nPlease react with 🍕 on today's lunch message ASAP!`
+              text: `🚨 *Last Call for Lunch Orders!*\n\nTime is running out to place your lunch order!\n\n*Still waiting on:*\n${nonOrderedUsers.map((user: { username: string }) => `• ${user.username}`).join('\n')}\n\nPlease react with 🍕 on today's lunch message ASAP!`
             }
           }
         ]

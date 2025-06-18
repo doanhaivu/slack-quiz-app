@@ -1,4 +1,4 @@
-import { ExtractedItem, QuizQuestion, VocabularyItem } from '../../types';
+import { ExtractedItem, QuizQuestion, VocabularyItem, PostResult } from '../../types';
 
 interface ExtractedContent {
   news: ExtractedItem[];
@@ -6,15 +6,7 @@ interface ExtractedContent {
   prompts: ExtractedItem[];
 }
 
-interface PostResult {
-  message: string;
-  results: Array<{
-    category: string;
-    title?: string;
-    count?: number;
-    slackMessageId: string;
-  }>;
-}
+
 
 interface StylesType {
   extractedContent: string;
