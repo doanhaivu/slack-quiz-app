@@ -16,61 +16,69 @@ export default async function handler(
   }
 }
 
+// Shared function to get lunch summary data
+async function getLunchSummaryData(date?: string) {
+  const targetDate = date || new Date().toISOString().split('T')[0];
+  
+  const orderData = lunchOrders.get(targetDate);
+  
+  if (!orderData) {
+    throw new Error(`No lunch orders found for date: ${targetDate}`);
+  }
+
+  // Get channel members to identify who hasn't ordered
+  const slack = getSlackClient();
+  const channelInfo = await slack.conversations.members({
+    channel: SLACK_CHANNEL_ID // Note: This should be made dynamic based on the order data
+  });
+
+  const orderedUserIds = new Set(orderData.orders.map(order => order.userId));
+  const allMembers = channelInfo.members || [];
+  
+  // Filter out bots and get info for members who haven't ordered
+  const nonOrderedMembers = [];
+  for (const memberId of allMembers) {
+    if (!orderedUserIds.has(memberId)) {
+      try {
+        const userInfo = await slack.users.info({ user: memberId });
+        // Skip bots and deleted users
+        if (!userInfo.user?.is_bot && !userInfo.user?.deleted) {
+          nonOrderedMembers.push({
+            userId: memberId,
+            username: userInfo.user?.real_name || userInfo.user?.name || 'Unknown User'
+          });
+        }
+      } catch (error) {
+        console.error(`Error getting user info for ${memberId}:`, error);
+      }
+    }
+  }
+
+  return {
+    date: targetDate,
+    summary: {
+      totalOrders: orderData.orders.length,
+      totalMembers: allMembers.length,
+      orderedUsers: orderData.orders,
+      nonOrderedUsers: nonOrderedMembers,
+      orderingRate: Math.round((orderData.orders.length / allMembers.length) * 100)
+    }
+  };
+}
+
 async function handleGetSummary(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { date } = req.query;
-    const targetDate = date as string || new Date().toISOString().split('T')[0];
-    
-    const orderData = lunchOrders.get(targetDate);
-    
-    if (!orderData) {
-      return res.status(404).json({
-        error: 'No lunch orders found for the specified date',
-        date: targetDate
-      });
-    }
-
-    // Get channel members to identify who hasn't ordered
-    const slack = getSlackClient();
-    const channelInfo = await slack.conversations.members({
-      channel: SLACK_CHANNEL_ID // Note: This should be made dynamic based on the order data
-    });
-
-    const orderedUserIds = new Set(orderData.orders.map(order => order.userId));
-    const allMembers = channelInfo.members || [];
-    
-    // Filter out bots and get info for members who haven't ordered
-    const nonOrderedMembers = [];
-    for (const memberId of allMembers) {
-      if (!orderedUserIds.has(memberId)) {
-        try {
-          const userInfo = await slack.users.info({ user: memberId });
-          // Skip bots and deleted users
-          if (!userInfo.user?.is_bot && !userInfo.user?.deleted) {
-            nonOrderedMembers.push({
-              userId: memberId,
-              username: userInfo.user?.real_name || userInfo.user?.name || 'Unknown User'
-            });
-          }
-        } catch (error) {
-          console.error(`Error getting user info for ${memberId}:`, error);
-        }
-      }
-    }
-
-    return res.status(200).json({
-      date: targetDate,
-      summary: {
-        totalOrders: orderData.orders.length,
-        totalMembers: allMembers.length,
-        orderedUsers: orderData.orders,
-        nonOrderedUsers: nonOrderedMembers,
-        orderingRate: Math.round((orderData.orders.length / allMembers.length) * 100)
-      }
-    });
-
+    const summaryData = await getLunchSummaryData(date as string);
+    return res.status(200).json(summaryData);
   } catch (error) {
     console.error('Error getting lunch summary:', error);
+    if (error instanceof Error && error.message.includes('No lunch orders found')) {
+      return res.status(404).json({
+        error: error.message,
+        date: (req.query.date as string) || new Date().toISOString().split('T')[0]
+      });
+    }
     return res.status(500).json({
       error: error instanceof Error ? error.message : 'Failed to get lunch summary'
     });
@@ -92,13 +100,8 @@ async function handleSendReminder(req: NextApiRequest, res: NextApiResponse) {
 
     const slack = getSlackClient();
     
-    // Get summary first
-    const summaryResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/lunch/summary`);
-    if (!summaryResponse.ok) {
-      throw new Error('Failed to get lunch summary');
-    }
-    
-    const summary = await summaryResponse.json();
+    // Get summary data directly instead of making HTTP request
+    const summary = await getLunchSummaryData(today);
     const nonOrderedUsers = summary.summary.nonOrderedUsers;
 
     if (nonOrderedUsers.length === 0) {
