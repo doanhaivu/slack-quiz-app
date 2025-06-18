@@ -39,11 +39,14 @@ In your Slack app settings (https://api.slack.com/apps), ensure you have:
   - `reaction_removed` - Track when users remove reactions
 
 **OAuth Scopes:**
-- `channels:history` - Read channel messages
 - `chat:write` - Post messages
-- `reactions:read` - Read message reactions
-- `users:read` - Get user information
+- `chat:write.public` - Post to public channels
+- `channels:read` - List available channels
+- `channels:history` - Read channel messages
 - `conversations:read` - Access channel information
+- `reactions:read` - Read message reactions
+- `reactions:write` - Add reactions to messages
+- `users:read` - Get user information
 
 ### 2. Environment Variables
 

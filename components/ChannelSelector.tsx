@@ -35,6 +35,7 @@ const ChannelSelector: React.FC<ChannelSelectorProps> = ({
           setChannels([
             { id: 'C08ST272AAG', name: '#test-bot' },
             { id: 'C08NFUBLJN9', name: '#english-club' },
+            { id: 'C08U1JW3X0C', name: '#lunch-order' },
           ]);
         // }
         setLoading(false);
