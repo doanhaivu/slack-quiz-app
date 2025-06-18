@@ -1,4 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { getSlackClient } from '../../../services/slack/client';
+import { SLACK_CHANNEL_ID } from '../../../constants';
+import { lunchOrders } from './schedule';
 
 export default async function handler(
   req: NextApiRequest,
@@ -29,21 +32,8 @@ export default async function handler(
       });
     }
 
-    // Call the schedule endpoint to post today's lunch message
-    const scheduleResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/lunch/schedule`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        scheduledTime: "09:30" // Default to 9:30 AM
-      })
-    });
-
-    if (!scheduleResponse.ok) {
-      const error = await scheduleResponse.text();
-      throw new Error(`Failed to schedule lunch message: ${error}`);
-    }
-
-    const result = await scheduleResponse.json();
+    // Post today's lunch message directly instead of making HTTP request
+    const result = await postLunchMessage(SLACK_CHANNEL_ID, "09:30");
 
     return res.status(200).json({
       message: 'Daily lunch order posted successfully',
@@ -56,4 +46,67 @@ export default async function handler(
       error: error instanceof Error ? error.message : 'Failed to execute cron job'
     });
   }
+}
+
+async function postLunchMessage(channelId: string, scheduledTime: string = "09:30") {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const slack = getSlackClient();
+
+  // Create the lunch order message
+  const message = await slack.chat.postMessage({
+    channel: channelId,
+    text: "🍽️ Daily Lunch Order - React with 🍕 to order!",
+    blocks: [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: '🍽️ Daily Lunch Order'
+        }
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `📅 *${new Date().toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })}*\n\n🍕 React with :pizza: to order lunch!\n\n*Orders so far:*\n_No orders yet..._`
+        }
+      },
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `⏰ Deadline: ${scheduledTime === "09:30" ? "11:00 AM" : "12:00 PM"} | 📊 Total orders: 0`
+          }
+        ]
+      }
+    ]
+  });
+
+  // Add pizza reaction to the message to make it clear
+  if (message.ts) {
+    await slack.reactions.add({
+      channel: channelId,
+      timestamp: message.ts,
+      name: 'pizza'
+    });
+  }
+
+  // Store the order data
+  lunchOrders.set(today, {
+    messageTs: message.ts,
+    date: today,
+    orders: [],
+    scheduledTime
+  });
+
+  return {
+    messageTs: message.ts,
+    date: today
+  };
 } 

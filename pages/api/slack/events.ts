@@ -3,6 +3,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { WebClient } from '@slack/web-api';
 import OpenAI from 'openai';
 import axios from 'axios';
+import { getSlackClient } from '../../../services/slack/client';
+import { lunchOrders } from '../lunch/schedule';
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 const openai = new OpenAI({
@@ -37,7 +39,27 @@ interface SlackEvent {
   event_time: number;
 }
 
+interface SlackReactionEvent {
+  type: string;
+  user: string;
+  reaction: string;
+  item: {
+    type: string;
+    channel: string;
+    ts: string;
+  };
+}
 
+interface LunchOrderData {
+  messageTs?: string;
+  date: string;
+  orders: {
+    userId: string;
+    username: string;
+    timestamp: string;
+  }[];
+  scheduledTime: string;
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -71,16 +93,12 @@ export default async function handler(
     if (event.type === 'event_callback' && 
         (event.event.type === 'reaction_added' || event.event.type === 'reaction_removed')) {
       
-      // Forward to lunch reaction handler if it's a pizza reaction
+      // Handle pizza reactions directly instead of forwarding
       if (event.event.reaction === 'pizza') {
-        const lunchResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/lunch/reaction-handler`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(req.body)
-        });
-        
-        if (!lunchResponse.ok) {
-          console.error('Error forwarding to lunch handler:', await lunchResponse.text());
+        try {
+          await handleLunchReaction(event.event as SlackReactionEvent);
+        } catch (error) {
+          console.error('Error handling lunch reaction:', error);
         }
       }
     }
@@ -89,6 +107,104 @@ export default async function handler(
   } catch (error) {
     console.error('Error handling Slack event:', error);
     return res.status(500).json({ error: 'Failed to process event' });
+  }
+}
+
+async function handleLunchReaction(event: SlackReactionEvent) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const todaysOrders = lunchOrders.get(today);
+
+    if (!todaysOrders || todaysOrders.messageTs !== event.item.ts) {
+      // This reaction is not for today's lunch message
+      return;
+    }
+
+    const slackClient = getSlackClient();
+    
+    // Get user info
+    const userInfo = await slackClient.users.info({ user: event.user });
+    const username = userInfo.user?.real_name || userInfo.user?.name || 'Unknown User';
+
+    if (event.type === 'reaction_added') {
+      // Add user to orders if not already present
+      const existingOrderIndex = todaysOrders.orders.findIndex(order => order.userId === event.user);
+      
+      if (existingOrderIndex === -1) {
+        todaysOrders.orders.push({
+          userId: event.user,
+          username: username,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } else if (event.type === 'reaction_removed') {
+      // Remove user from orders
+      todaysOrders.orders = todaysOrders.orders.filter(order => order.userId !== event.user);
+    }
+
+    // Update the message with new order list
+    await updateLunchMessage(event.item.channel, todaysOrders);
+
+  } catch (error) {
+    console.error('Error handling lunch reaction:', error);
+  }
+}
+
+async function updateLunchMessage(channelId: string, orderData: LunchOrderData) {
+  const slackClient = getSlackClient();
+  
+  const ordersList = orderData.orders.length > 0 
+    ? orderData.orders.map((order) => `• ${order.username}`).join('\n')
+    : '_No orders yet..._';
+
+  const totalOrders = orderData.orders.length;
+  const deadline = orderData.scheduledTime === "09:30" ? "11:00 AM" : "12:00 PM";
+
+  try {
+    if (!orderData.messageTs) {
+      console.error('No messageTs found for order data');
+      return;
+    }
+
+    await slackClient.chat.update({
+      channel: channelId,
+      ts: orderData.messageTs,
+      text: "🍽️ Daily Lunch Order - React with 🍕 to order!",
+      blocks: [
+        {
+          type: 'header',
+          text: {
+            type: 'plain_text',
+            text: '🍽️ Daily Lunch Order'
+          }
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `📅 *${new Date().toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}*\n\n🍕 React with :pizza: to order lunch!\n\n*Orders so far:*\n${ordersList}`
+          }
+        },
+        {
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `⏰ Deadline: ${deadline} | 📊 Total orders: ${totalOrders}`
+            }
+          ]
+        }
+      ]
+    });
+
+    console.log(`✅ Updated lunch message: ${totalOrders} orders`);
+  } catch (error) {
+    console.error('Error updating lunch message:', error);
   }
 }
 
