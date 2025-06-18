@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
+import ChannelSelector from '../components/ChannelSelector';
+import { SLACK_CHANNEL_ID } from '../constants';
 
 interface LunchSummary {
   date: string;
@@ -17,6 +19,7 @@ const LunchAdminPage: NextPage = () => {
   const [summary, setSummary] = useState<LunchSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [selectedChannel, setSelectedChannel] = useState(SLACK_CHANNEL_ID);
 
   const fetchSummary = async () => {
     setLoading(true);
@@ -41,7 +44,10 @@ const LunchAdminPage: NextPage = () => {
       const response = await fetch('/api/lunch/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduledTime: '09:30' })
+        body: JSON.stringify({ 
+          scheduledTime: '09:30',
+          channelId: selectedChannel 
+        })
       });
       
       if (response.ok) {
@@ -63,7 +69,10 @@ const LunchAdminPage: NextPage = () => {
       const response = await fetch('/api/lunch/summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messageType: type })
+        body: JSON.stringify({ 
+          messageType: type,
+          channelId: selectedChannel 
+        })
       });
       
       if (response.ok) {
@@ -88,8 +97,13 @@ const LunchAdminPage: NextPage = () => {
         <title>Lunch Order Admin</title>
       </Head>
       
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', fontFamily: 'system-ui' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', fontFamily: 'system-ui', position: 'relative' }}>
         <h1>🍽️ Lunch Order Admin</h1>
+        
+        <ChannelSelector
+          selectedChannel={selectedChannel}
+          onChannelChange={setSelectedChannel}
+        />
         
         {message && (
           <div style={{ 

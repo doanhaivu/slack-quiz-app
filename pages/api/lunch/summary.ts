@@ -33,7 +33,7 @@ async function handleGetSummary(req: NextApiRequest, res: NextApiResponse) {
     // Get channel members to identify who hasn't ordered
     const slack = getSlackClient();
     const channelInfo = await slack.conversations.members({
-      channel: SLACK_CHANNEL_ID
+      channel: SLACK_CHANNEL_ID // Note: This should be made dynamic based on the order data
     });
 
     const orderedUserIds = new Set(orderData.orders.map(order => order.userId));
