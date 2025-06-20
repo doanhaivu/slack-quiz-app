@@ -113,14 +113,14 @@ async function handleSendReminder(req: NextApiRequest, res: NextApiResponse) {
 
     // Create reminder message
     const reminderMessages = {
-      gentle: {
+              gentle: {
         text: "🍽️ Lunch Order Reminder",
         blocks: [
           {
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: `🍽️ *Lunch Order Reminder*\n\nHey team! Just a friendly reminder that lunch orders are still open.\n\n📊 *Current Status:*\n• ${summary.summary.totalOrders} people have ordered\n• ${nonOrderedUsers.length} people haven't ordered yet\n\nDon't forget to react with 🍕 on today's lunch message if you want to order!`
+              text: `🍽️ *Lunch Order Reminder*\n\nHey team! Just a friendly reminder that lunch orders are still open.\n\n📊 *Current Status:*\n• ${summary.summary.totalOrders} people have ordered\n• ${nonOrderedUsers.length} people haven't responded yet\n\nDon't forget to react on today's lunch message:\n✅ React with :white_check_mark: to order\n❌ React with :x: if you're not ordering`
             }
           }
         ]
@@ -132,7 +132,7 @@ async function handleSendReminder(req: NextApiRequest, res: NextApiResponse) {
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: `🚨 *Last Call for Lunch Orders!*\n\nTime is running out to place your lunch order!\n\n*Still waiting on:*\n${nonOrderedUsers.map((user: { username: string }) => `• ${user.username}`).join('\n')}\n\nPlease react with 🍕 on today's lunch message ASAP!`
+              text: `🚨 *Last Call for Lunch Orders!*\n\nTime is running out to respond to the lunch order!\n\n*Still waiting on:*\n${nonOrderedUsers.map((user: { username: string }) => `• ${user.username}`).join('\n')}\n\nPlease react on today's lunch message ASAP:\n✅ :white_check_mark: to order | ❌ :x: if not ordering`
             }
           }
         ]

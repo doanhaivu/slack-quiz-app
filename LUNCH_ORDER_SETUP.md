@@ -5,7 +5,7 @@ A simple and effective lunch ordering system that integrates with your existing 
 ## 🌟 Features
 
 - **Daily Automated Messages**: Schedule lunch order messages at configurable times
-- **Simple Reaction-Based Ordering**: Users react with 🍕 to place orders
+- **Simple Reaction-Based Ordering**: Users react with ✅ to order or ❌ to decline
 - **Real-Time Updates**: Message updates automatically showing who ordered
 - **Comprehensive Tracking**: See who ordered, who didn't, and ordering statistics
 - **Smart Reminders**: Send gentle or urgent reminders to non-respondents
@@ -16,8 +16,9 @@ A simple and effective lunch ordering system that integrates with your existing 
 
 ### For Users (Simple!)
 1. **See the Message**: Bot posts daily lunch order message at configured time (e.g., 9:30 AM)
-2. **React to Order**: React with 🍕 emoji to place your lunch order
+2. **React to Respond**: React with ✅ to order lunch or ❌ if you're not ordering
 3. **Live Updates**: Message updates in real-time showing all orders
+4. **Priority Logic**: If you react with both, ❌ takes priority (you won't be counted as ordering)
 
 ### For Admins (Powerful!)
 1. **Automated Posting**: Set up cron jobs for automatic daily messages
@@ -114,10 +115,10 @@ curl -X POST "https://your-domain.com/api/lunch/schedule" \
 
 ### Daily Workflow
 
-1. **9:30 AM**: Bot automatically posts lunch order message
-2. **9:30-11:00 AM**: Team members react with 🍕 to order
+1. **9:30 AM**: Bot posts lunch order message (manually via admin dashboard)
+2. **9:30-11:00 AM**: Team members react with ✅ to order or ❌ to decline
 3. **10:30 AM**: Admin checks dashboard, sends gentle reminder if needed
-4. **10:50 AM**: Admin sends urgent reminder for stragglers
+4. **10:50 AM**: Admin sends urgent reminder for non-respondents
 5. **11:00 AM**: Order deadline, admin can see final summary
 
 ### Message Example
@@ -127,9 +128,10 @@ curl -X POST "https://your-domain.com/api/lunch/schedule" \
 
 📅 Monday, January 15, 2024
 
-🍕 React with :pizza: to order lunch!
+✅ React with :white_check_mark: to order lunch!
+❌ React with :x: if you're not ordering
 
-Orders so far:
+Orders so far (3):
 • John Smith
 • Sarah Wilson
 • Mike Chen
@@ -184,13 +186,14 @@ Override default channel:
 
 ## 🎨 Benefits Over Traditional Polls
 
-1. **Simpler UX**: Just react with pizza emoji vs. clicking poll options
+1. **Clearer Intent**: React with ✅ to order or ❌ to decline - no ambiguity
 2. **Live Updates**: Message updates in real-time
 3. **Better Tracking**: See exactly who ordered and when
 4. **Smart Reminders**: Target only people who haven't responded
 5. **Admin Control**: Full management interface
 6. **No Poll Limits**: Slack polls have limitations, this doesn't
 7. **Persistent**: Message stays updated throughout the day
+8. **Priority Logic**: Cross reaction takes priority if someone reacts with both
 
 ## 🔒 Security Features
 
@@ -210,6 +213,7 @@ Override default channel:
 **Messages not posting?**
 - Confirm `SLACK_BOT_TOKEN` is correct
 - Check bot has `chat:write` permission in the channel
+- Verify bot can add reactions (`reactions:write` scope)
 
 **Admin dashboard not loading data?**
 - Ensure lunch message was posted first

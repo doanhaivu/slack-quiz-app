@@ -40,7 +40,7 @@ async function handlePostLunchMessage(req: NextApiRequest, res: NextApiResponse)
     // Create the lunch order message
     const message = await slack.chat.postMessage({
       channel: channelId,
-      text: "🍽️ Daily Lunch Order - React with 🍕 to order!",
+      text: "🍽️ Daily Lunch Order - React with ✅ to order or ❌ for no order!",
       blocks: [
         {
           type: 'header',
@@ -58,7 +58,7 @@ async function handlePostLunchMessage(req: NextApiRequest, res: NextApiResponse)
               year: 'numeric', 
               month: 'long', 
               day: 'numeric' 
-            })}*\n\n🍕 React with :pizza: to order lunch!\n\n*Orders so far:*\n_No orders yet..._`
+            })}*\n\n✅ React with :white_check_mark: to order lunch!\n❌ React with :x: if you're not ordering\n\n*Orders so far (0):*\n_No orders yet..._`
           }
         },
         {
@@ -73,12 +73,17 @@ async function handlePostLunchMessage(req: NextApiRequest, res: NextApiResponse)
       ]
     });
 
-    // Add pizza reaction to the message to make it clear
+    // Add checkmark and cross reactions to the message to make it clear
     if (message.ts) {
       await slack.reactions.add({
         channel: channelId,
         timestamp: message.ts,
-        name: 'pizza'
+        name: 'white_check_mark'
+      });
+      await slack.reactions.add({
+        channel: channelId,
+        timestamp: message.ts,
+        name: 'x'
       });
     }
 

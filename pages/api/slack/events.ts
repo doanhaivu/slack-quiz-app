@@ -93,8 +93,8 @@ export default async function handler(
     if (event.type === 'event_callback' && 
         (event.event.type === 'reaction_added' || event.event.type === 'reaction_removed')) {
       
-      // Handle pizza reactions directly instead of forwarding
-      if (event.event.reaction === 'pizza') {
+      // Handle checkmark and cross reactions for lunch orders
+      if (event.event.reaction === 'white_check_mark' || event.event.reaction === 'x') {
         try {
           await handleLunchReaction(event.event as SlackReactionEvent);
         } catch (error) {
@@ -122,14 +122,29 @@ async function handleLunchReaction(event: SlackReactionEvent) {
 
     const slackClient = getSlackClient();
     
+    // Get all reactions on the message to determine user's actual status
+    const messageReactions = await slackClient.reactions.get({
+      channel: event.item.channel,
+      timestamp: event.item.ts
+    });
+
     // Get user info
     const userInfo = await slackClient.users.info({ user: event.user });
     const username = userInfo.user?.real_name || userInfo.user?.name || 'Unknown User';
 
-    if (event.type === 'reaction_added') {
+    // Check if user has both checkmark and cross reactions
+    const reactions = messageReactions.message?.reactions || [];
+    const userHasCheckmark = reactions.find(r => r.name === 'white_check_mark')?.users?.includes(event.user) || false;
+    const userHasCross = reactions.find(r => r.name === 'x')?.users?.includes(event.user) || false;
+
+    // Determine if user should be in orders list
+    // If user has both reactions, cross takes priority (they don't want to order)
+    const shouldOrder = userHasCheckmark && !userHasCross;
+
+    const existingOrderIndex = todaysOrders.orders.findIndex(order => order.userId === event.user);
+
+    if (shouldOrder) {
       // Add user to orders if not already present
-      const existingOrderIndex = todaysOrders.orders.findIndex(order => order.userId === event.user);
-      
       if (existingOrderIndex === -1) {
         todaysOrders.orders.push({
           userId: event.user,
@@ -137,9 +152,11 @@ async function handleLunchReaction(event: SlackReactionEvent) {
           timestamp: new Date().toISOString()
         });
       }
-    } else if (event.type === 'reaction_removed') {
-      // Remove user from orders
-      todaysOrders.orders = todaysOrders.orders.filter(order => order.userId !== event.user);
+    } else {
+      // Remove user from orders if present
+      if (existingOrderIndex !== -1) {
+        todaysOrders.orders = todaysOrders.orders.filter(order => order.userId !== event.user);
+      }
     }
 
     // Update the message with new order list
@@ -169,7 +186,7 @@ async function updateLunchMessage(channelId: string, orderData: LunchOrderData) 
     await slackClient.chat.update({
       channel: channelId,
       ts: orderData.messageTs,
-      text: "🍽️ Daily Lunch Order - React with 🍕 to order!",
+      text: "🍽️ Daily Lunch Order - React with ✅ to order or ❌ for no order!",
       blocks: [
         {
           type: 'header',
@@ -187,7 +204,7 @@ async function updateLunchMessage(channelId: string, orderData: LunchOrderData) 
               year: 'numeric', 
               month: 'long', 
               day: 'numeric' 
-            })}*\n\n🍕 React with :pizza: to order lunch!\n\n*Orders so far:*\n${ordersList}`
+            })}*\n\n✅ React with :white_check_mark: to order lunch!\n❌ React with :x: if you're not ordering\n\n*Orders so far (${totalOrders}):*\n${ordersList}`
           }
         },
         {
