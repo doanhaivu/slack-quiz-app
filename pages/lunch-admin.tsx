@@ -58,7 +58,10 @@ const LunchAdminPage: NextPage = () => {
         setMessage('Lunch message posted successfully!');
         setTimeout(fetchSummary, 1000); // Refresh summary after posting
       } else {
-        setMessage('Error posting lunch message');
+        const errorData = await response.json();
+        const errorMsg = errorData.error || 'Error posting lunch message';
+        const details = errorData.details ? `\n\nDetails: ${errorData.details}` : '';
+        setMessage(`❌ ${errorMsg}${details}`);
       }
     } catch (error) {
       setMessage('Error posting lunch message');
@@ -92,6 +95,33 @@ const LunchAdminPage: NextPage = () => {
     setLoading(false);
   };
 
+  const debugChannelAccess = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/lunch/debug?botId=${encodeURIComponent(selectedBot)}&channelId=${encodeURIComponent(selectedChannel)}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        const debugInfo = [
+          `🤖 Bot: ${data.botInfo?.teamName || 'Unknown'} (${data.botId})`,
+          `📋 Channel: ${data.channelInfo?.name || selectedChannel}`,
+          `🏠 Bot in channel: ${data.botInChannel ? '✅ Yes' : '❌ No'}`,
+          `👥 Members: ${data.memberCount || 'Unknown'}`,
+          data.channelError ? `❌ Channel Error: ${data.channelError}` : '',
+          data.memberListError ? `⚠️ Member List Error: ${data.memberListError}` : ''
+        ].filter(Boolean).join('\n');
+        
+        setMessage(`🔍 Debug Results:\n\n${debugInfo}`);
+      } else {
+        setMessage(`❌ Debug failed: ${data.error}`);
+      }
+    } catch (error) {
+      setMessage('❌ Debug request failed');
+      console.error(error);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     fetchSummary();
   }, []);
@@ -119,9 +149,11 @@ const LunchAdminPage: NextPage = () => {
           <div style={{ 
             padding: '10px', 
             marginBottom: '20px', 
-            backgroundColor: '#f0f8ff', 
-            border: '1px solid #0066cc',
-            borderRadius: '4px'
+            backgroundColor: message.includes('❌') ? '#f8d7da' : message.includes('🔍') ? '#e2e3e5' : '#f0f8ff', 
+            border: `1px solid ${message.includes('❌') ? '#f5c6cb' : message.includes('🔍') ? '#6c757d' : '#0066cc'}`,
+            borderRadius: '4px',
+            whiteSpace: 'pre-wrap',
+            fontFamily: 'monospace'
           }}>
             {message}
           </div>
@@ -158,6 +190,22 @@ const LunchAdminPage: NextPage = () => {
             }}
           >
             🔄 Refresh Summary
+          </button>
+          
+          <button
+            onClick={debugChannelAccess}
+            disabled={loading}
+            style={{
+              padding: '10px 20px',
+              marginLeft: '10px',
+              backgroundColor: '#17a2b8',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: loading ? 'not-allowed' : 'pointer'
+            }}
+          >
+            🔍 Debug Channel Access
           </button>
         </div>
 

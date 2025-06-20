@@ -35,8 +35,23 @@ async function handlePostLunchMessage(req: NextApiRequest, res: NextApiResponse)
   try {
     const { channelId = SLACK_CHANNEL_ID, scheduledTime = "09:30", botId } = req.body;
     
+    console.log(`📤 Posting lunch message - Channel: ${channelId}, Bot: ${botId || 'default'}`);
+    
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
     const slack = getSlackClientForBot(botId);
+
+    // First, let's verify the bot can access the channel
+    try {
+      const channelInfo = await slack.conversations.info({ channel: channelId });
+      console.log(`✅ Channel found: ${channelInfo.channel?.name} (${channelId})`);
+    } catch (channelError) {
+      console.error(`❌ Channel access error for ${channelId}:`, channelError);
+      return res.status(400).json({ 
+        error: `Channel not found or bot doesn't have access to channel ${channelId}. Make sure the bot is added to the channel.`,
+        channelId,
+        botId: botId || 'default'
+      });
+    }
 
     // Create the lunch order message
     const message = await slack.chat.postMessage({
@@ -105,8 +120,38 @@ async function handlePostLunchMessage(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Error posting lunch message:', error);
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('channel_not_found')) {
+        return res.status(400).json({ 
+          error: `Channel not found. Please check if the bot is added to the channel and the channel ID is correct.`,
+          details: error.message,
+          channelId: req.body.channelId,
+          botId: req.body.botId || 'default'
+        });
+      }
+      if (error.message.includes('not_in_channel')) {
+        return res.status(400).json({ 
+          error: `Bot is not in the channel. Please add the bot to the channel first.`,
+          details: error.message,
+          channelId: req.body.channelId,
+          botId: req.body.botId || 'default'
+        });
+      }
+      if (error.message.includes('missing_scope')) {
+        return res.status(400).json({ 
+          error: `Bot doesn't have required permissions. Check OAuth scopes.`,
+          details: error.message,
+          botId: req.body.botId || 'default'
+        });
+      }
+    }
+    
     return res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to post lunch message' 
+      error: error instanceof Error ? error.message : 'Failed to post lunch message',
+      channelId: req.body.channelId,
+      botId: req.body.botId || 'default'
     });
   }
 }
