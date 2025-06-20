@@ -77,6 +77,18 @@ Features:
 - Post lunch messages manually
 - Send reminder messages
 - Real-time order tracking
+- Channel selection dropdown
+- Bot selection dropdown
+
+### 5. Bot Configuration
+
+Access bot management at: `https://your-domain.com/bot-admin`
+
+Features:
+- Add multiple bot configurations
+- Manage bot tokens and signing secrets
+- View bot status and configuration health
+- Delete unused bot configurations (except default)
 
 ## 📅 Automation Setup
 
@@ -116,10 +128,10 @@ curl -X POST "https://your-domain.com/api/lunch/schedule" \
 ### Daily Workflow
 
 1. **9:30 AM**: Bot posts lunch order message (manually via admin dashboard)
-2. **9:30-11:00 AM**: Team members react with ✅ to order or ❌ to decline
-3. **10:30 AM**: Admin checks dashboard, sends gentle reminder if needed
-4. **10:50 AM**: Admin sends urgent reminder for non-respondents
-5. **11:00 AM**: Order deadline, admin can see final summary
+2. **9:30-10:30 AM**: Team members react with ✅ to order or ❌ to decline
+3. **10:00 AM**: Admin checks dashboard, sends gentle reminder if needed
+4. **10:20 AM**: Admin sends urgent reminder for non-respondents
+5. **10:30 AM**: Order deadline, admin can see final summary
 
 ### Message Example
 
@@ -136,13 +148,13 @@ Orders so far (3):
 • Sarah Wilson
 • Mike Chen
 
-⏰ Deadline: 11:00 AM | 📊 Total orders: 3
+⏰ Deadline: 10:30 AM | 📊 Total orders: 3
 ```
 
 ## 📊 Admin Dashboard Features
 
 ### Statistics View
-- Total orders vs. total team members
+- Total orders vs. total team members (per channel)
 - Ordering rate percentage
 - List of people who ordered (with timestamps)
 - List of people who haven't ordered yet
@@ -157,6 +169,12 @@ Orders so far (3):
 - Dashboard updates automatically
 - Shows live ordering statistics
 - Tracks order timestamps
+
+### Multi-Bot Support
+- Select which bot to use from dropdown
+- Each bot can target different channels/teams
+- Separate member counting per channel
+- Bot configuration management interface
 
 ## 🔧 Customization Options
 

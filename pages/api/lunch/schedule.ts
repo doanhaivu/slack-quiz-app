@@ -1,10 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getSlackClient } from '../../../services/slack/client';
+import { getSlackClientForBot } from '../../../services/slack/client';
 import { SLACK_CHANNEL_ID } from '../../../constants';
 
 interface LunchOrderData {
   messageTs?: string;
   date: string;
+  channelId: string;
   orders: {
     userId: string;
     username: string;
@@ -32,10 +33,10 @@ export default async function handler(
 
 async function handlePostLunchMessage(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { channelId = SLACK_CHANNEL_ID, scheduledTime = "09:30" } = req.body;
+    const { channelId = SLACK_CHANNEL_ID, scheduledTime = "09:30", botId } = req.body;
     
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    const slack = getSlackClient();
+    const slack = getSlackClientForBot(botId);
 
     // Create the lunch order message
     const message = await slack.chat.postMessage({
@@ -66,7 +67,7 @@ async function handlePostLunchMessage(req: NextApiRequest, res: NextApiResponse)
           elements: [
             {
               type: 'mrkdwn',
-              text: `⏰ Deadline: ${scheduledTime === "09:30" ? "11:00 AM" : "12:00 PM"} | 📊 Total orders: 0`
+              text: `⏰ Deadline: ${scheduledTime === "09:30" ? "10:30 AM" : "11:30 AM"} | 📊 Total orders: 0`
             }
           ]
         }
@@ -91,6 +92,7 @@ async function handlePostLunchMessage(req: NextApiRequest, res: NextApiResponse)
     lunchOrders.set(today, {
       messageTs: message.ts,
       date: today,
+      channelId: channelId,
       orders: [],
       scheduledTime
     });

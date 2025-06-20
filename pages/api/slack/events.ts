@@ -53,6 +53,7 @@ interface SlackReactionEvent {
 interface LunchOrderData {
   messageTs?: string;
   date: string;
+  channelId: string;
   orders: {
     userId: string;
     username: string;
@@ -175,7 +176,7 @@ async function updateLunchMessage(channelId: string, orderData: LunchOrderData) 
     : '_No orders yet..._';
 
   const totalOrders = orderData.orders.length;
-  const deadline = orderData.scheduledTime === "09:30" ? "11:00 AM" : "12:00 PM";
+  const deadline = orderData.scheduledTime === "09:30" ? "10:30 AM" : "11:30 AM";
 
   try {
     if (!orderData.messageTs) {

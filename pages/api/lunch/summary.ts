@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getSlackClient } from '../../../services/slack/client';
+import { getSlackClientForBot } from '../../../services/slack/client';
 import { SLACK_CHANNEL_ID } from '../../../constants';
 import { lunchOrders } from './schedule';
 
@@ -17,7 +17,7 @@ export default async function handler(
 }
 
 // Shared function to get lunch summary data
-async function getLunchSummaryData(date?: string) {
+async function getLunchSummaryData(date?: string, botId?: string) {
   const targetDate = date || new Date().toISOString().split('T')[0];
   
   const orderData = lunchOrders.get(targetDate);
@@ -27,9 +27,9 @@ async function getLunchSummaryData(date?: string) {
   }
 
   // Get channel members to identify who hasn't ordered
-  const slack = getSlackClient();
+  const slack = getSlackClientForBot(botId);
   const channelInfo = await slack.conversations.members({
-    channel: SLACK_CHANNEL_ID // Note: This should be made dynamic based on the order data
+    channel: orderData.channelId // Use the actual channel where the lunch message was posted
   });
 
   const orderedUserIds = new Set(orderData.orders.map(order => order.userId));
@@ -68,8 +68,8 @@ async function getLunchSummaryData(date?: string) {
 
 async function handleGetSummary(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { date } = req.query;
-    const summaryData = await getLunchSummaryData(date as string);
+    const { date, botId } = req.query;
+    const summaryData = await getLunchSummaryData(date as string, botId as string);
     return res.status(200).json(summaryData);
   } catch (error) {
     console.error('Error getting lunch summary:', error);
@@ -87,7 +87,7 @@ async function handleGetSummary(req: NextApiRequest, res: NextApiResponse) {
 
 async function handleSendReminder(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { channelId = SLACK_CHANNEL_ID, messageType = 'gentle' } = req.body;
+    const { channelId = SLACK_CHANNEL_ID, messageType = 'gentle', botId } = req.body;
     const today = new Date().toISOString().split('T')[0];
     
     const orderData = lunchOrders.get(today);
@@ -98,10 +98,10 @@ async function handleSendReminder(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    const slack = getSlackClient();
+    const slack = getSlackClientForBot(botId);
     
     // Get summary data directly instead of making HTTP request
-    const summary = await getLunchSummaryData(today);
+    const summary = await getLunchSummaryData(today, botId);
     const nonOrderedUsers = summary.summary.nonOrderedUsers;
 
     if (nonOrderedUsers.length === 0) {

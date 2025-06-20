@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
 import ChannelSelector from '../components/ChannelSelector';
+import { BotSelector } from '../components/BotSelector';
 import { SLACK_CHANNEL_ID } from '../constants';
 
 interface LunchSummary {
@@ -20,11 +21,13 @@ const LunchAdminPage: NextPage = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [selectedChannel, setSelectedChannel] = useState(SLACK_CHANNEL_ID);
+  const [selectedBot, setSelectedBot] = useState('default');
 
   const fetchSummary = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/lunch/summary');
+      const url = `/api/lunch/summary?botId=${encodeURIComponent(selectedBot)}`;
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setSummary(data);
@@ -46,7 +49,8 @@ const LunchAdminPage: NextPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           scheduledTime: '09:30',
-          channelId: selectedChannel 
+          channelId: selectedChannel,
+          botId: selectedBot
         })
       });
       
@@ -71,7 +75,8 @@ const LunchAdminPage: NextPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           messageType: type,
-          channelId: selectedChannel 
+          channelId: selectedChannel,
+          botId: selectedBot
         })
       });
       
@@ -103,6 +108,11 @@ const LunchAdminPage: NextPage = () => {
         <ChannelSelector
           selectedChannel={selectedChannel}
           onChannelChange={setSelectedChannel}
+        />
+        
+        <BotSelector
+          selectedBot={selectedBot}
+          onBotChange={setSelectedBot}
         />
         
         {message && (
