@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { WebClient } from '@slack/web-api';
 import OpenAI from 'openai';
 import axios from 'axios';
-import { getSlackClient } from '../../../services/slack/client';
+import { getSlackClientForBot } from '../../../services/slack/client';
 import { lunchOrders } from '../lunch/schedule';
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
@@ -121,7 +121,7 @@ async function handleLunchReaction(event: SlackReactionEvent) {
       return;
     }
 
-    const slackClient = getSlackClient();
+    const slackClient = getSlackClientForBot(); // Use default bot for event handling
     
     // Get all reactions on the message to determine user's actual status
     const messageReactions = await slackClient.reactions.get({
@@ -135,8 +135,8 @@ async function handleLunchReaction(event: SlackReactionEvent) {
 
     // Check if user has both checkmark and cross reactions
     const reactions = messageReactions.message?.reactions || [];
-    const userHasCheckmark = reactions.find(r => r.name === 'white_check_mark')?.users?.includes(event.user) || false;
-    const userHasCross = reactions.find(r => r.name === 'x')?.users?.includes(event.user) || false;
+    const userHasCheckmark = reactions.find((r: any) => r.name === 'white_check_mark')?.users?.includes(event.user) || false;
+    const userHasCross = reactions.find((r: any) => r.name === 'x')?.users?.includes(event.user) || false;
 
     // Determine if user should be in orders list
     // If user has both reactions, cross takes priority (they don't want to order)
@@ -169,7 +169,7 @@ async function handleLunchReaction(event: SlackReactionEvent) {
 }
 
 async function updateLunchMessage(channelId: string, orderData: LunchOrderData) {
-  const slackClient = getSlackClient();
+  const slackClient = getSlackClientForBot(); // Use default bot for event handling
   
   const ordersList = orderData.orders.length > 0 
     ? orderData.orders.map((order) => `• ${order.username}`).join('\n')

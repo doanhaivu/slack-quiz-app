@@ -1,7 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getSlackClient } from '../../../services/slack/client';
+import { getSlackClientForBot } from '../../../services/slack/client';
 import { SLACK_CHANNEL_ID } from '../../../constants';
 import { lunchOrders } from './schedule';
+
+// NOTE: This cron endpoint is deprecated. Use the admin dashboard to post lunch messages manually.
 
 export default async function handler(
   req: NextApiRequest,
@@ -49,13 +51,15 @@ export default async function handler(
 }
 
 async function postLunchMessage(channelId: string, scheduledTime: string = "09:30") {
+  console.warn('⚠️ DEPRECATED: Cron posting is deprecated. Use the admin dashboard to post lunch messages manually.');
+  
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-  const slack = getSlackClient();
+  const slack = getSlackClientForBot(); // Use default bot
 
-  // Create the lunch order message
+  // Create the lunch order message (updated format)
   const message = await slack.chat.postMessage({
     channel: channelId,
-    text: "🍽️ Daily Lunch Order - React with 🍕 to order!",
+    text: "🍽️ Daily Lunch Order - React with ✅ to order or ❌ for no order!",
     blocks: [
       {
         type: 'header',
@@ -73,7 +77,7 @@ async function postLunchMessage(channelId: string, scheduledTime: string = "09:3
             year: 'numeric', 
             month: 'long', 
             day: 'numeric' 
-          })}*\n\n🍕 React with :pizza: to order lunch!\n\n*Orders so far:*\n_No orders yet..._`
+          })}*\n\n✅ React with :white_check_mark: to order lunch!\n❌ React with :x: if you're not ordering\n\n*Orders so far (0):*\n_No orders yet..._`
         }
       },
       {
@@ -81,26 +85,32 @@ async function postLunchMessage(channelId: string, scheduledTime: string = "09:3
         elements: [
           {
             type: 'mrkdwn',
-            text: `⏰ Deadline: ${scheduledTime === "09:30" ? "11:00 AM" : "12:00 PM"} | 📊 Total orders: 0`
+            text: `⏰ Deadline: ${scheduledTime === "09:30" ? "10:30 AM" : "11:30 AM"} | 📊 Total orders: 0`
           }
         ]
       }
     ]
   });
 
-  // Add pizza reaction to the message to make it clear
+  // Add checkmark and cross reactions to the message
   if (message.ts) {
     await slack.reactions.add({
       channel: channelId,
       timestamp: message.ts,
-      name: 'pizza'
+      name: 'white_check_mark'
+    });
+    await slack.reactions.add({
+      channel: channelId,
+      timestamp: message.ts,
+      name: 'x'
     });
   }
 
-  // Store the order data
+  // Store the order data (updated format)
   lunchOrders.set(today, {
     messageTs: message.ts,
     date: today,
+    channelId: channelId,
     orders: [],
     scheduledTime
   });

@@ -53,10 +53,12 @@ In your Slack app settings (https://api.slack.com/apps), ensure you have:
 
 Add to your `.env.local`:
 ```bash
-SLACK_BOT_TOKEN=xoxb-your-bot-token
+SLACK_BOT_TOKEN=xoxb-your-bot-token  # Used for default bot configuration
 SLACK_CHANNEL_ID=C1234567890  # Your lunch channel ID
-CRON_SECRET_TOKEN=your-secure-random-token  # Optional, for cron security
+CRON_SECRET_TOKEN=your-secure-random-token  # Optional, for cron security (deprecated)
 ```
+
+**Note:** The system now uses bot configurations managed through the admin interface. Environment variables are only used as fallback for the "default" bot configuration.
 
 ### 3. API Endpoints Created
 

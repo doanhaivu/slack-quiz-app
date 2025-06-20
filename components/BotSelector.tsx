@@ -108,7 +108,7 @@ export const BotSelector: React.FC<BotSelectorProps> = ({ selectedBot, onBotChan
   return (
     <div style={{ 
       position: 'absolute', 
-      top: '20px', 
+      top: '70px', 
       right: '20px',
       display: 'flex',
       alignItems: 'center',
