@@ -6,6 +6,7 @@ interface LunchOrderData {
   messageTs?: string;
   date: string;
   channelId: string;
+  botId: string; // Store which bot was used to post this message
   orders: {
     userId: string;
     username: string;
@@ -108,6 +109,7 @@ async function handlePostLunchMessage(req: NextApiRequest, res: NextApiResponse)
       messageTs: message.ts,
       date: today,
       channelId: channelId,
+      botId: botId || 'default',
       orders: [],
       scheduledTime
     });

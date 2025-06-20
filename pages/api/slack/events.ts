@@ -54,6 +54,7 @@ interface LunchOrderData {
   messageTs?: string;
   date: string;
   channelId: string;
+  botId: string; // Store which bot was used to post this message
   orders: {
     userId: string;
     username: string;
@@ -121,7 +122,9 @@ async function handleLunchReaction(event: SlackReactionEvent) {
       return;
     }
 
-    const slackClient = getSlackClientForBot(); // Use default bot for event handling
+    const slackClient = getSlackClientForBot(todaysOrders.botId); // Use same bot that posted the message
+    
+    console.log(`🔄 Handling lunch reaction - Using bot: ${todaysOrders.botId}, Channel: ${event.item.channel}`);
     
     // Get all reactions on the message to determine user's actual status
     const messageReactions = await slackClient.reactions.get({
@@ -169,7 +172,9 @@ async function handleLunchReaction(event: SlackReactionEvent) {
 }
 
 async function updateLunchMessage(channelId: string, orderData: LunchOrderData) {
-  const slackClient = getSlackClientForBot(); // Use default bot for event handling
+  const slackClient = getSlackClientForBot(orderData.botId); // Use same bot that posted the message
+  
+  console.log(`📝 Updating lunch message - Bot: ${orderData.botId}, Channel: ${channelId}, Orders: ${orderData.orders.length}`);
   
   const ordersList = orderData.orders.length > 0 
     ? orderData.orders.map((order) => `• ${order.username}`).join('\n')

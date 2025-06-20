@@ -111,6 +111,7 @@ async function postLunchMessage(channelId: string, scheduledTime: string = "09:3
     messageTs: message.ts,
     date: today,
     channelId: channelId,
+    botId: 'default', // Cron always uses default bot
     orders: [],
     scheduledTime
   });
