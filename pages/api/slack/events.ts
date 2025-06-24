@@ -95,47 +95,86 @@ export default async function handler(
       isThreadReply: !!event.event?.thread_ts,
       channel: event.event?.channel,
       user: event.event?.user,
+      subtype: (event.event as any).subtype,
       fullEvent: JSON.stringify(event, null, 2)
     });
     
-    // Handle message events with files (audio replies)
+    // Handle message events with files (audio replies) - be more comprehensive
     if (event.type === 'event_callback' && event.event.type === 'message') {
+      const messageEvent = event.event as any;
+      
       console.log('💬 Message event received:', {
-        hasFiles: !!event.event.files,
-        fileCount: event.event.files?.length || 0,
-        hasThread: !!event.event.thread_ts,
-        user: event.event.user,
-        text: event.event.text?.substring(0, 100),
-        subtype: (event.event as any).subtype
+        hasFiles: !!messageEvent.files,
+        fileCount: messageEvent.files?.length || 0,
+        hasThread: !!messageEvent.thread_ts,
+        user: messageEvent.user,
+        text: messageEvent.text?.substring(0, 100),
+        subtype: messageEvent.subtype,
+        botId: messageEvent.bot_id,
+        upload: messageEvent.upload
       });
 
-      if (event.event.files && event.event.files.length > 0) {
-        console.log('📎 Message with files detected:', event.event.files.map(f => ({
+      // Process messages with files, but exclude bot messages and certain subtypes
+      if (messageEvent.files && 
+          messageEvent.files.length > 0 && 
+          !messageEvent.bot_id && 
+          messageEvent.subtype !== 'bot_message') {
+        
+        console.log('📎 Message with files detected:', messageEvent.files.map((f: any) => ({
           name: f.name,
           mimetype: f.mimetype,
           id: f.id
         })));
         
-        // Check if this is a thread reply
-        if (event.event.thread_ts) {
+        // Check if this is a thread reply (for audio processing)
+        if (messageEvent.thread_ts) {
           console.log('🧵 Processing thread reply via message event...');
-          const eventData: SlackEventData = {
-            type: event.event.type,
-            channel: event.event.channel,
-            user: event.event.user,
-            text: event.event.text,
-            files: event.event.files,
-            thread_ts: event.event.thread_ts,
-            ts: event.event.ts
-          };
-          await handleAudioReply(eventData, slack);
+          
+          // Check if any files are audio files
+          const audioFiles = messageEvent.files.filter((file: any) => 
+            file.mimetype?.startsWith('audio/') || 
+            file.name?.toLowerCase().endsWith('.mp3') ||
+            file.name?.toLowerCase().endsWith('.wav') ||
+            file.name?.toLowerCase().endsWith('.m4a')
+          );
+          
+          if (audioFiles.length > 0) {
+            console.log(`🎵 Found ${audioFiles.length} audio file(s) in thread reply`);
+            
+            const eventData: SlackEventData = {
+              type: messageEvent.type,
+              channel: messageEvent.channel,
+              user: messageEvent.user,
+              text: messageEvent.text || '',
+              files: messageEvent.files.filter((f: any) => f.id && f.name && f.mimetype && f.url_private && f.url_private_download).map((f: any) => ({
+                id: f.id,
+                name: f.name,
+                mimetype: f.mimetype,
+                url_private: f.url_private,
+                url_private_download: f.url_private_download
+              })),
+              thread_ts: messageEvent.thread_ts,
+              ts: messageEvent.ts
+            };
+            await handleAudioReply(eventData, slack);
+          } else {
+            console.log('❌ No audio files found in thread reply');
+          }
         } else {
           console.log('❌ Not a thread reply - audio processing skipped');
+        }
+      } else {
+        if (messageEvent.bot_id) {
+          console.log('🤖 Skipping bot message');
+        } else if (messageEvent.subtype === 'bot_message') {
+          console.log('🤖 Skipping bot_message subtype');
+        } else if (!messageEvent.files || messageEvent.files.length === 0) {
+          console.log('📝 Message without files');
         }
       }
     }
 
-    // Handle file_shared events (when audio files are uploaded)
+    // Handle file_shared events (when audio files are uploaded) - keep as fallback
     if (event.type === 'event_callback' && event.event.type === 'file_shared') {
       console.log('📁 File shared event detected');
       try {
