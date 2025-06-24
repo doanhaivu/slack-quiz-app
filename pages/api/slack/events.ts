@@ -87,32 +87,11 @@ export default async function handler(
   try {
     const event: SlackEvent = req.body;
     
-    console.log('📨 Received Slack event:', {
-      type: event.type,
-      eventType: event.event?.type,
-      hasFiles: !!event.event?.files,
-      fileCount: event.event?.files?.length || 0,
-      isThreadReply: !!event.event?.thread_ts,
-      channel: event.event?.channel,
-      user: event.event?.user,
-      subtype: (event.event as any).subtype,
-      fullEvent: JSON.stringify(event, null, 2)
-    });
+    console.log('📨 Slack event:', event.type, '->', event.event?.type);
     
-    // Handle message events with files (audio replies) - be more comprehensive
+    // Handle message events with files (audio replies)
     if (event.type === 'event_callback' && event.event.type === 'message') {
       const messageEvent = event.event as any;
-      
-      console.log('💬 Message event received:', {
-        hasFiles: !!messageEvent.files,
-        fileCount: messageEvent.files?.length || 0,
-        hasThread: !!messageEvent.thread_ts,
-        user: messageEvent.user,
-        text: messageEvent.text?.substring(0, 100),
-        subtype: messageEvent.subtype,
-        botId: messageEvent.bot_id,
-        upload: messageEvent.upload
-      });
 
       // Process messages with files, but exclude bot messages and certain subtypes
       if (messageEvent.files && 
@@ -120,15 +99,9 @@ export default async function handler(
           !messageEvent.bot_id && 
           messageEvent.subtype !== 'bot_message') {
         
-        console.log('📎 Message with files detected:', messageEvent.files.map((f: any) => ({
-          name: f.name,
-          mimetype: f.mimetype,
-          id: f.id
-        })));
-        
         // Check if this is a thread reply (for audio processing)
         if (messageEvent.thread_ts) {
-          console.log('🧵 Processing thread reply via message event...');
+          console.log('🧵 Thread reply with files detected');
           
           // Check if any files are audio files
           const audioFiles = messageEvent.files.filter((file: any) => 
@@ -139,7 +112,7 @@ export default async function handler(
           );
           
           if (audioFiles.length > 0) {
-            console.log(`🎵 Found ${audioFiles.length} audio file(s) in thread reply`);
+            console.log(`🎵 Processing ${audioFiles.length} audio file(s) in thread`);
             
             const eventData: SlackEventData = {
               type: messageEvent.type,
@@ -157,19 +130,7 @@ export default async function handler(
               ts: messageEvent.ts
             };
             await handleAudioReply(eventData, slack);
-          } else {
-            console.log('❌ No audio files found in thread reply');
           }
-        } else {
-          console.log('❌ Not a thread reply - audio processing skipped');
-        }
-      } else {
-        if (messageEvent.bot_id) {
-          console.log('🤖 Skipping bot message');
-        } else if (messageEvent.subtype === 'bot_message') {
-          console.log('🤖 Skipping bot_message subtype');
-        } else if (!messageEvent.files || messageEvent.files.length === 0) {
-          console.log('📝 Message without files');
         }
       }
     }
@@ -201,11 +162,6 @@ export default async function handler(
           console.error('Error handling lunch reaction:', error);
         }
       }
-    }
-
-    // Log any unhandled events for debugging
-    if (event.type === 'event_callback' && !['message', 'file_shared', 'reaction_added', 'reaction_removed'].includes(event.event.type)) {
-      console.log('🔍 Unhandled event type:', event.event.type, 'Full event:', JSON.stringify(event, null, 2));
     }
 
     return res.status(200).json({ message: 'Event processed' });
