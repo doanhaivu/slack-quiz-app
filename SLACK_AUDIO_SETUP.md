@@ -27,10 +27,12 @@ In your Slack app configuration (https://api.slack.com/apps):
 ### 2. Required OAuth Scopes
 
 Make sure your bot has these scopes in **OAuth & Permissions**:
-- `channels:history` - Read messages in channels
+- `channels:history` - **CRITICAL**: Read messages in channels (needed to detect thread replies)
 - `chat:write` - Post messages
 - `files:read` - Access uploaded files
 - `users:read` - Read user information
+
+**⚠️ Important**: The `channels:history` scope is essential for the audio processing to work. Without it, the bot cannot determine if an audio file was posted as a reply to a thread.
 
 ### 3. Environment Variables
 
@@ -80,7 +82,17 @@ OPENAI_API_KEY=your-openai-api-key
 
 ## Troubleshooting
 
+### Missing Scope Error
+If you see `missing_scope` errors in the logs:
+1. Go to your Slack app settings (https://api.slack.com/apps)
+2. Navigate to **OAuth & Permissions**
+3. Add the `channels:history` scope
+4. **Reinstall the app** to your workspace (click "Install to Workspace")
+5. The bot will post an error message in the channel if this scope is missing
+
+### Other Issues
 - Check the server logs for any errors during processing
 - Ensure the Slack app has the correct permissions
 - Verify that the OpenAI API key is valid and has credits
-- Make sure the event URL is accessible from Slack's servers 
+- Make sure the event URL is accessible from Slack's servers
+- Ensure you're replying to a thread, not posting a new message 
