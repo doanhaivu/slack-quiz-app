@@ -91,29 +91,31 @@ export default async function handler(
     });
     
     // Handle message events with files (audio replies)
-    if (event.type === 'event_callback' && 
-        event.event.type === 'message' && 
-        event.event.files && 
-        event.event.files.length > 0) {
-      
-      console.log('📎 Message with files detected:', event.event.files.map(f => ({
-        name: f.name,
-        mimetype: f.mimetype,
-        id: f.id
-      })));
-      
-      // Check if this is a thread reply
-      if (event.event.thread_ts) {
-        console.log('🧵 Processing thread reply...');
-        await handleAudioReply(event.event);
-      } else {
-        console.log('❌ Not a thread reply - audio processing skipped');
-      }
-    } else if (event.type === 'event_callback' && event.event.type === 'message') {
-      console.log('💬 Regular message (no files):', {
+    if (event.type === 'event_callback' && event.event.type === 'message') {
+      console.log('💬 Message event received:', {
+        hasFiles: !!event.event.files,
+        fileCount: event.event.files?.length || 0,
+        hasThread: !!event.event.thread_ts,
+        user: event.event.user,
         text: event.event.text?.substring(0, 100),
-        hasThread: !!event.event.thread_ts
+        subtype: (event.event as any).subtype
       });
+
+      if (event.event.files && event.event.files.length > 0) {
+        console.log('📎 Message with files detected:', event.event.files.map(f => ({
+          name: f.name,
+          mimetype: f.mimetype,
+          id: f.id
+        })));
+        
+        // Check if this is a thread reply
+        if (event.event.thread_ts) {
+          console.log('🧵 Processing thread reply via message event...');
+          await handleAudioReply(event.event);
+        } else {
+          console.log('❌ Not a thread reply - audio processing skipped');
+        }
+      }
     }
 
     // Handle file_shared events (when audio files are uploaded)
@@ -138,6 +140,11 @@ export default async function handler(
           console.error('Error handling lunch reaction:', error);
         }
       }
+    }
+
+    // Log any unhandled events for debugging
+    if (event.type === 'event_callback' && !['message', 'file_shared', 'reaction_added', 'reaction_removed'].includes(event.event.type)) {
+      console.log('🔍 Unhandled event type:', event.event.type, 'Full event:', JSON.stringify(event, null, 2));
     }
 
     return res.status(200).json({ message: 'Event processed' });
@@ -400,7 +407,49 @@ async function handleFileShared(eventData: any) {
           console.log('❌ File was not posted in a thread - audio processing requires thread replies');
         }
       } else {
-        console.log('🔍 No message found with this file yet - might be processing...');
+        console.log('🔍 No message found with this file yet - trying with delay...');
+        
+        // Wait 2 seconds and try again (message might not be posted yet)
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Retrying after delay...');
+            const retryMessages = await slack.conversations.history({
+              channel: channelId,
+              limit: 10,
+              oldest: (Date.now() / 1000 - 120).toString() // Last 2 minutes
+            });
+
+            const retryMessageWithFile = retryMessages.messages?.find(msg => 
+              msg.files?.some(f => f.id === eventData.file_id)
+            );
+
+            if (retryMessageWithFile && retryMessageWithFile.thread_ts && retryMessageWithFile.user && retryMessageWithFile.ts) {
+              console.log('🧵 Found message with file after retry! Processing audio reply...');
+              
+              const mockEventData = {
+                type: 'message',
+                channel: channelId,
+                user: retryMessageWithFile.user,
+                text: retryMessageWithFile.text || '',
+                files: retryMessageWithFile.files?.filter(f => f.id && f.name && f.mimetype && f.url_private && f.url_private_download).map(f => ({
+                  id: f.id!,
+                  name: f.name!,
+                  mimetype: f.mimetype!,
+                  url_private: f.url_private!,
+                  url_private_download: f.url_private_download!
+                })),
+                thread_ts: retryMessageWithFile.thread_ts,
+                ts: retryMessageWithFile.ts
+              };
+
+              await handleAudioReply(mockEventData);
+            } else {
+              console.log('❌ Still no message found after retry - audio file might not be in a thread');
+            }
+          } catch (retryError) {
+            console.error('❌ Error in retry attempt:', retryError);
+          }
+        }, 2000);
       }
     } catch (error) {
       console.error('❌ Error checking for thread context:', error);
