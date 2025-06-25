@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { calculateUserScores, getQuizStatistics, getAvailableWeeks, calculateUserPronunciationScores, getPronunciationStatistics } from '../../services/quiz';
+import { calculateUserScores, getQuizStatistics, getAvailableWeeks, calculateUserPronunciationScores, getPronunciationStatistics, getAvailablePronunciationWeeks } from '../../services/quiz';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -12,6 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Get available weeks
     const availableWeeks = await getAvailableWeeks();
+    const availablePronunciationWeeks = await getAvailablePronunciationWeeks();
     
     // Get user scores (with optional week filter)
     const userScores = await calculateUserScores(weekFilter);
@@ -19,9 +20,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get quiz statistics (with optional week filter)
     const quizStats = await getQuizStatistics(weekFilter);
     
-    // Get pronunciation statistics (no week filter for now - could be added later)
-    const pronunciationUserScores = await calculateUserPronunciationScores();
-    const pronunciationStats = await getPronunciationStatistics();
+    // Get pronunciation statistics (with week filter)
+    const pronunciationUserScores = await calculateUserPronunciationScores(weekFilter);
+    const pronunciationStats = await getPronunciationStatistics(weekFilter);
     
     return res.status(200).json({
       userScores,
@@ -30,7 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       currentWeek: weekFilter || 'all',
       pronunciation: {
         userScores: pronunciationUserScores,
-        stats: pronunciationStats
+        stats: pronunciationStats,
+        availableWeeks: availablePronunciationWeeks
       }
     });
   } catch (error) {

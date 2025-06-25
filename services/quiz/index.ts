@@ -17,7 +17,8 @@ export {
   calculateUserScores,
   getQuizStatistics,
   calculateUserPronunciationScores,
-  getPronunciationStatistics
+  getPronunciationStatistics,
+  getAvailablePronunciationWeeks
 } from './statistics';
 
 export {
