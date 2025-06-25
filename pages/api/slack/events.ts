@@ -3,7 +3,6 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { WebClient } from '@slack/web-api';
 import { handleLunchReaction } from '../../../services/slack/lunch-handler';
 import { handleAudioReply } from '../../../services/slack/audio-handler';
-import { handleFileShared } from '../../../services/slack/file-shared-handler';
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 
@@ -47,12 +46,6 @@ interface SlackReactionEvent {
     channel: string;
     ts: string;
   };
-}
-
-interface SlackFileSharedEvent {
-  file_id: string;
-  user_id: string;
-  channel_id?: string;
 }
 
 interface SlackEventData {
@@ -132,21 +125,6 @@ export default async function handler(
             await handleAudioReply(eventData, slack);
           }
         }
-      }
-    }
-
-    // Handle file_shared events (when audio files are uploaded) - keep as fallback
-    if (event.type === 'event_callback' && event.event.type === 'file_shared') {
-      console.log('📁 File shared event detected');
-      try {
-        const fileSharedEvent: SlackFileSharedEvent = {
-          file_id: event.event.file_id!,
-          user_id: event.event.user_id!,
-          channel_id: event.event.channel_id
-        };
-        await handleFileShared(fileSharedEvent, slack);
-      } catch (error) {
-        console.error('❌ Error handling file_shared event:', error);
       }
     }
 
