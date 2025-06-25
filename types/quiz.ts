@@ -56,6 +56,7 @@ export interface ReportData {
   pronunciation: {
     userScores: UserPronunciationScore[];
     stats: PronunciationStats;
+    availableWeeks: string[];
   };
 }
 

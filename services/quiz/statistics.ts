@@ -54,15 +54,86 @@ async function getAllPronunciationResponses(): Promise<PronunciationResponseData
 }
 
 /**
+ * Extract timestamp from Slack threadId
+ */
+function getTimestampFromThreadId(threadId: string): Date {
+  // ThreadId format is like "1750642356.226499" where first part is Unix timestamp in seconds
+  const timestampSeconds = parseFloat(threadId.split('.')[0]);
+  return new Date(timestampSeconds * 1000);
+}
+
+/**
+ * Get the start and end dates for a given week string (e.g., "2024-01-15")
+ */
+function getWeekRange(weekString: string): { start: Date, end: Date } {
+  const date = new Date(weekString);
+  const day = date.getDay();
+  const start = new Date(date);
+  start.setDate(date.getDate() - day); // Go to Sunday
+  start.setHours(0, 0, 0, 0);
+  
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6); // Go to Saturday
+  end.setHours(23, 59, 59, 999);
+  
+  return { start, end };
+}
+
+/**
+ * Get available weeks from pronunciation responses based on threadId timestamps
+ */
+export async function getAvailablePronunciationWeeks(): Promise<string[]> {
+  const responses = await getAllPronunciationResponses();
+  
+  if (responses.length === 0) {
+    return [];
+  }
+  
+  // Get unique weeks from threadId timestamps
+  const weeks = new Set<string>();
+  
+  for (const response of responses) {
+    const originalDate = getTimestampFromThreadId(response.threadId);
+    const sunday = new Date(originalDate);
+    sunday.setDate(originalDate.getDate() - originalDate.getDay()); // Go to Sunday
+    const weekString = sunday.toISOString().split('T')[0]; // YYYY-MM-DD format
+    weeks.add(weekString);
+  }
+  
+  // Sort weeks in descending order (newest first)
+  return Array.from(weeks).sort((a, b) => b.localeCompare(a));
+}
+
+/**
+ * Filter pronunciation responses by week based on threadId timestamp
+ */
+function filterPronunciationResponsesByWeek(
+  responses: PronunciationResponseData[], 
+  weekString?: string
+): PronunciationResponseData[] {
+  if (!weekString || weekString === 'all') {
+    return responses;
+  }
+  
+  const { start, end } = getWeekRange(weekString);
+  
+  return responses.filter(response => {
+    const originalDate = getTimestampFromThreadId(response.threadId);
+    return originalDate >= start && originalDate <= end;
+  });
+}
+
+/**
  * Calculate user pronunciation scores
  */
-export async function calculateUserPronunciationScores(): Promise<UserPronunciationScore[]> {
+export async function calculateUserPronunciationScores(weekFilter?: string): Promise<UserPronunciationScore[]> {
   const allResponses = await getAllPronunciationResponses();
+  const responses = filterPronunciationResponsesByWeek(allResponses, weekFilter);
   
   // Group responses by user
   const userResponsesMap = new Map<string, PronunciationResponseData[]>();
   
-  for (const response of allResponses) {
+  for (const response of responses) {
     if (!userResponsesMap.has(response.userId)) {
       userResponsesMap.set(response.userId, []);
     }
@@ -120,13 +191,14 @@ export async function calculateUserPronunciationScores(): Promise<UserPronunciat
 /**
  * Get pronunciation statistics by thread/content
  */
-export async function getPronunciationStatistics() {
+export async function getPronunciationStatistics(weekFilter?: string) {
   const allResponses = await getAllPronunciationResponses();
+  const responses = filterPronunciationResponsesByWeek(allResponses, weekFilter);
   
   // Group by thread ID
   const threadStatsMap = new Map<string, PronunciationResponseData[]>();
   
-  for (const response of allResponses) {
+  for (const response of responses) {
     if (!threadStatsMap.has(response.threadId)) {
       threadStatsMap.set(response.threadId, []);
     }
@@ -158,11 +230,11 @@ export async function getPronunciationStatistics() {
   threadStats.sort((a, b) => a.averageScore - b.averageScore);
   
   return {
-    totalAttempts: allResponses.length,
+    totalAttempts: responses.length,
     uniqueThreads: threadStatsMap.size,
-    totalUsers: new Set(allResponses.map(r => r.userId)).size,
-    overallAverageScore: allResponses.length > 0 
-      ? Math.round((allResponses.reduce((sum, r) => sum + r.score, 0) / allResponses.length) * 10) / 10
+    totalUsers: new Set(responses.map(r => r.userId)).size,
+    overallAverageScore: responses.length > 0 
+      ? Math.round((responses.reduce((sum, r) => sum + r.score, 0) / responses.length) * 10) / 10
       : 0,
     threadStats
   };

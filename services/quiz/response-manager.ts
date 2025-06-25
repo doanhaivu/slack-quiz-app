@@ -108,6 +108,15 @@ export async function saveQuizResponse(response: QuizResponse): Promise<boolean>
 }
 
 /**
+ * Extract timestamp from quizId (same format as Slack threadId)
+ */
+function getTimestampFromQuizId(quizId: string): Date {
+  // QuizId format is like "1748150546.942729" where first part is Unix timestamp in seconds
+  const timestampSeconds = parseFloat(quizId.split('.')[0]);
+  return new Date(timestampSeconds * 1000);
+}
+
+/**
  * Get the start and end dates for a given week string (e.g., "2024-01-15")
  */
 export function getWeekRange(weekString: string): { start: Date, end: Date } {
@@ -125,7 +134,7 @@ export function getWeekRange(weekString: string): { start: Date, end: Date } {
 }
 
 /**
- * Get available weeks from responses
+ * Get available weeks from responses based on quiz posting time (quizId)
  */
 export async function getAvailableWeeks(): Promise<string[]> {
   const responses = await getAllResponses();
@@ -134,13 +143,13 @@ export async function getAvailableWeeks(): Promise<string[]> {
     return [];
   }
   
-  // Get unique weeks from timestamps
+  // Get unique weeks from quizId timestamps (original quiz posting time)
   const weeks = new Set<string>();
   
   for (const response of responses) {
-    const date = new Date(response.timestamp);
-    const sunday = new Date(date);
-    sunday.setDate(date.getDate() - date.getDay()); // Go to Sunday
+    const originalDate = getTimestampFromQuizId(response.quizId);
+    const sunday = new Date(originalDate);
+    sunday.setDate(originalDate.getDate() - originalDate.getDay()); // Go to Sunday
     const weekString = sunday.toISOString().split('T')[0]; // YYYY-MM-DD format
     weeks.add(weekString);
   }
@@ -150,7 +159,7 @@ export async function getAvailableWeeks(): Promise<string[]> {
 }
 
 /**
- * Filter responses by week
+ * Filter responses by week based on quiz posting time (quizId)
  */
 export function filterResponsesByWeek(responses: QuizResponse[], weekString?: string): QuizResponse[] {
   if (!weekString || weekString === 'all') {
@@ -160,7 +169,7 @@ export function filterResponsesByWeek(responses: QuizResponse[], weekString?: st
   const { start, end } = getWeekRange(weekString);
   
   return responses.filter(response => {
-    const responseDate = new Date(response.timestamp);
-    return responseDate >= start && responseDate <= end;
+    const originalDate = getTimestampFromQuizId(response.quizId);
+    return originalDate >= start && originalDate <= end;
   });
 } 
