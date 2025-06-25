@@ -6,6 +6,20 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Simple in-memory cache to prevent duplicate processing
+const processedFiles = new Map<string, number>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Clean up old entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, timestamp] of processedFiles.entries()) {
+    if (now - timestamp > CACHE_DURATION) {
+      processedFiles.delete(key);
+    }
+  }
+}, 60 * 1000); // Clean up every minute
+
 interface SlackEventData {
   type: string;
   channel: string;
@@ -44,6 +58,21 @@ export async function handleAudioReply(eventData: SlackEventData, slack: WebClie
       return;
     }
 
+    // Check for duplicate processing
+    const audioFile = audioFiles[0];
+    const cacheKey = `${audioFile.id}-${eventData.thread_ts}`;
+    const now = Date.now();
+    
+    if (processedFiles.has(cacheKey)) {
+      const lastProcessed = processedFiles.get(cacheKey)!;
+      if (now - lastProcessed < CACHE_DURATION) {
+        console.log(`🔄 Skipping duplicate processing of file ${audioFile.id} (processed ${Math.round((now - lastProcessed) / 1000)}s ago)`);
+        return;
+      }
+    }
+    
+    // Mark this file as being processed
+    processedFiles.set(cacheKey, now);
     console.log(`📞 Audio reply detected with ${audioFiles.length} audio file(s)`);
 
     // Get the original message to extract the news piece text
@@ -77,7 +106,6 @@ export async function handleAudioReply(eventData: SlackEventData, slack: WebClie
     }
 
     // Process the first audio file
-    const audioFile = audioFiles[0];
     console.log('🎧 Processing audio file:', audioFile.name);
     await processAudioFile(audioFile, originalText, eventData, slack);
 
@@ -237,4 +265,4 @@ async function processAudioFile(
       console.error('❌ Failed to post error message to Slack:', slackError);
     }
   }
-} 
+}
