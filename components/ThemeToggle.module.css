@@ -13,7 +13,7 @@
   color: #555;
   cursor: pointer;
   transition: all 0.2s ease;
-  z-index: 1000;
+  z-index: 1001; /* Above sidebar */
 }
 
 .themeToggle:hover {
@@ -34,4 +34,19 @@
 
 :global(.dark-mode) .themeToggle:hover {
   background-color: #333;
+}
+
+/* Responsive positioning */
+@media (max-width: 768px) {
+  .themeToggle {
+    top: 15px;
+    right: 15px;
+    width: 36px;
+    height: 36px;
+  }
+  
+  .themeToggle svg {
+    width: 18px;
+    height: 18px;
+  }
 } 

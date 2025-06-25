@@ -1,0 +1,45 @@
+.appLayout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.mainContent {
+  flex: 1;
+  margin-left: 280px;
+  padding: 20px;
+  transition: margin-left 0.3s ease;
+  overflow-x: auto;
+}
+
+.mainContent.collapsed {
+  margin-left: 70px;
+}
+
+/* Dark theme support */
+:global(.dark-mode) .appLayout {
+  background-color: #121212;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .mainContent {
+    margin-left: 250px;
+    padding: 16px;
+  }
+  
+  .mainContent.collapsed {
+    margin-left: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mainContent {
+    margin-left: 0;
+    padding: 12px;
+  }
+  
+  .mainContent.collapsed {
+    margin-left: 0;
+  }
+} 
