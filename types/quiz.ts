@@ -7,6 +7,15 @@ export interface UserScore {
   accuracy: number;
 }
 
+export interface UserPronunciationScore {
+  userId: string;
+  username: string;
+  averageScore: number;
+  bestScore: number;
+  totalAttempts: number;
+  improvementTrend: number;
+}
+
 export interface QuestionStat {
   attempts: number;
   correct: number;
@@ -16,10 +25,27 @@ export interface QuestionStat {
   correctPercentage: number;
 }
 
+export interface PronunciationStat {
+  threadId: string;
+  originalText: string;
+  attempts: number;
+  averageScore: number;
+  bestScore: number;
+  worstScore: number;
+}
+
 export interface QuizStats {
   totalResponses: number;
   uniqueUsers: number;
   questionStats: QuestionStat[];
+}
+
+export interface PronunciationStats {
+  totalAttempts: number;
+  uniqueThreads: number;
+  totalUsers: number;
+  overallAverageScore: number;
+  threadStats: PronunciationStat[];
 }
 
 export interface ReportData {
@@ -27,6 +53,10 @@ export interface ReportData {
   quizStats: QuizStats;
   availableWeeks: string[];
   currentWeek: string;
+  pronunciation: {
+    userScores: UserPronunciationScore[];
+    stats: PronunciationStats;
+  };
 }
 
 export interface QuizQuestion {
