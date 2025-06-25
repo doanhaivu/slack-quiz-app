@@ -1,0 +1,114 @@
+.userMenu {
+  position: relative;
+  display: inline-block;
+}
+
+.userButton {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.userButton:hover {
+  background: #e9ecef;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 160px;
+  z-index: 1000;
+  margin-top: 0.25rem;
+}
+
+.userInfo {
+  padding: 0.75rem;
+}
+
+.username {
+  font-weight: 600;
+  color: #333;
+}
+
+.role {
+  font-size: 0.8rem;
+  color: #666;
+  text-transform: capitalize;
+}
+
+.separator {
+  margin: 0;
+  border: none;
+  border-top: 1px solid #dee2e6;
+}
+
+.logoutButton {
+  display: block;
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #dc3545;
+  transition: background-color 0.2s;
+}
+
+.logoutButton:hover {
+  background: #f8f9fa;
+}
+
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+}
+
+/* Dark mode support */
+:global(.dark-mode) .userButton {
+  background: #4a5568;
+  border-color: #718096;
+  color: #e2e8f0;
+}
+
+:global(.dark-mode) .userButton:hover {
+  background: #2d3748;
+}
+
+:global(.dark-mode) .dropdown {
+  background: #2d3748;
+  border-color: #718096;
+}
+
+:global(.dark-mode) .username {
+  color: #e2e8f0;
+}
+
+:global(.dark-mode) .role {
+  color: #cbd5e0;
+}
+
+:global(.dark-mode) .separator {
+  border-color: #718096;
+}
+
+:global(.dark-mode) .logoutButton {
+  color: #fed7d7;
+}
+
+:global(.dark-mode) .logoutButton:hover {
+  background: #4a5568;
+} 

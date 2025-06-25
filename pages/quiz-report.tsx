@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
+import { NextPage } from 'next';
+import Head from 'next/head';
 import { ReportData } from '../types/quiz';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 const pageStyles = {
   container: {
@@ -152,7 +155,7 @@ const pageStyles = {
   },
 };
 
-export default function QuizReport() {
+const QuizReportPage: NextPage = () => {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -217,7 +220,11 @@ export default function QuizReport() {
   };
 
   return (
-    <div style={pageStyles.container}>
+    <ProtectedRoute>
+      <Head>
+        <title>Quiz Report - Slack Quiz App</title>
+      </Head>
+      <div style={pageStyles.container}>
       <h1 style={pageStyles.title}>Performance Report</h1>
 
       {loading && (
@@ -522,5 +529,8 @@ export default function QuizReport() {
         </>
       )}
     </div>
+    </ProtectedRoute>
   );
-} 
+};
+
+export default QuizReportPage; 

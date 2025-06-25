@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 interface BotConfig {
   id: string;
@@ -108,7 +109,7 @@ const BotAdminPage: NextPage = () => {
   };
 
   return (
-    <>
+    <ProtectedRoute>
       <Head>
         <title>Bot Configuration Admin</title>
       </Head>
@@ -333,7 +334,7 @@ const BotAdminPage: NextPage = () => {
           )}
         </div>
       </div>
-    </>
+    </ProtectedRoute>
   );
 };
 

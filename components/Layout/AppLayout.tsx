@@ -1,5 +1,6 @@
 import { useState, ReactNode } from 'react';
 import Sidebar from '../Sidebar';
+import UserMenu from '../UserMenu';
 import styles from './AppLayout.module.css';
 
 interface AppLayoutProps {
@@ -20,7 +21,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
         onToggle={toggleSidebar} 
       />
       <main className={`${styles.mainContent} ${isSidebarCollapsed ? styles.collapsed : ''}`}>
-        {children}
+        <div className={styles.topBar}>
+          <UserMenu />
+        </div>
+        <div className={styles.content}>
+          {children}
+        </div>
       </main>
     </div>
   );

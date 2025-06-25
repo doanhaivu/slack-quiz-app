@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -11,33 +12,52 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated } = useAuth();
 
-  const menuItems = [
+  const allMenuItems = [
     {
       href: '/',
       icon: '🏠',
       label: 'Home',
-      description: 'Content extraction and management'
+      description: 'Content extraction and management',
+      requireAuth: true
     },
     {
       href: '/quiz-report',
       icon: '📊',
       label: 'Quiz Reports',
-      description: 'Quiz performance analytics'
+      description: 'Quiz performance analytics',
+      requireAuth: true
     },
     {
       href: '/lunch-admin',
       icon: '🍽️',
       label: 'Lunch Admin',
-      description: 'Lunch order management'
+      description: 'Lunch order management',
+      requireAuth: false
     },
     {
       href: '/bot-admin',
       icon: '🤖',
       label: 'Bot Admin',
-      description: 'Bot configuration settings'
+      description: 'Bot configuration settings',
+      requireAuth: true
+    },
+    {
+      href: '/login',
+      icon: '🔐',
+      label: 'Login',
+      description: 'Admin login',
+      requireAuth: false,
+      hideWhenAuthenticated: true
     }
   ];
+
+  const menuItems = allMenuItems.filter(item => {
+    if (item.hideWhenAuthenticated && isAuthenticated) return false;
+    if (item.requireAuth && !isAuthenticated) return false;
+    return true;
+  });
 
   const isActive = (href: string) => {
     if (href === '/') {
