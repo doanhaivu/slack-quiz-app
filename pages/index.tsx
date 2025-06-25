@@ -264,6 +264,18 @@ export default function Home() {
     </>
   );
 
+  // Right sidebar content
+  const rightSidebar = (
+    <>
+      <ChannelSelector
+        selectedChannel={selectedChannel}
+        onChannelChange={setSelectedChannel}
+        inline={true}
+      />
+      <QuizReportSidebar />
+    </>
+  );
+
   // Main content
   const mainContent = (
     <>
@@ -380,15 +392,10 @@ export default function Home() {
           Slack Content Poster
         </h1>
         
-        <ChannelSelector
-          selectedChannel={selectedChannel}
-          onChannelChange={setSelectedChannel}
-        />
-        
         <ThreeColumnLayout
           leftSidebar={leftSidebar}
           mainContent={mainContent}
-          rightSidebar={<QuizReportSidebar />}
+          rightSidebar={rightSidebar}
         />
       </main>
     </div>

@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Read credentials file
-    const credentialsPath = path.join(process.cwd(), 'data', 'admin-credentials.json');
+    const credentialsPath = path.join(process.cwd(), 'admin-credentials.json');
     const credentialsData: CredentialsData = JSON.parse(fs.readFileSync(credentialsPath, 'utf-8'));
 
     // Find matching credential

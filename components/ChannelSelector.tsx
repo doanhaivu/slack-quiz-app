@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 interface ChannelSelectorProps {
   selectedChannel: string;
   onChannelChange: (channelId: string) => void;
+  inline?: boolean; // New prop to control positioning
 }
 
 interface SlackChannel {
@@ -12,7 +13,8 @@ interface SlackChannel {
 
 const ChannelSelector: React.FC<ChannelSelectorProps> = ({ 
   selectedChannel, 
-  onChannelChange 
+  onChannelChange,
+  inline = false
 }) => {
   const [channels, setChannels] = useState<SlackChannel[]>([
     { id: 'C08ST272AAG', name: '#default-channel' }
@@ -48,18 +50,28 @@ const ChannelSelector: React.FC<ChannelSelectorProps> = ({
     fetchChannels();
   }, []);
 
+  const containerStyle = inline ? {
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: '5px 10px',
+    borderRadius: '5px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    marginBottom: '10px'
+  } : {
+    position: 'absolute' as const, 
+    top: '20px', 
+    right: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: '5px 10px',
+    borderRadius: '5px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+  };
+
   return (
-    <div style={{ 
-      position: 'absolute', 
-      top: '20px', 
-      right: '20px',
-      display: 'flex',
-      alignItems: 'center',
-      backgroundColor: '#f5f5f5',
-      padding: '5px 10px',
-      borderRadius: '5px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-    }}>
+    <div style={containerStyle}>
       <label htmlFor="channel-select" style={{ marginRight: '10px', fontSize: '14px' }}>
         Post to:
       </label>
