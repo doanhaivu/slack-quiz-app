@@ -4,7 +4,7 @@ import { ExtractedItem, QuizQuestion } from '../../types';
 import { extractItemsFromText, saveExtractedItems } from '../../utils/api/extract';
 import { processNewsItem, saveQuizData } from '../../utils/api/quiz';
 import { processToolsItems, processPromptsItems } from '../../utils/api/items';
-import { postToSlack, postVocabularyAsReply, postQuizAsReply, postQuizToSlack } from '../../services/api/slack';
+import { postToSlack, postVocabularyAsReply, postQuizAsReply, postQuizToSlack } from '../../services/slack';
 
 // Server-side logging system
 class ServerLogger {

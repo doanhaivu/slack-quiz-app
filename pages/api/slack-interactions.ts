@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { WebClient } from '@slack/web-api';
 import { getQuizBySlackMessageId } from '../../utils/quizzes';
-import { saveQuizResponse } from '../../utils/responses';
+import { saveQuizResponse } from '../../services/quiz';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -59,11 +59,11 @@ interface SlackBlock {
   accessory?: {
     type: string;
     action_id: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   elements?: Array<{
     type: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }>;
 }
 
@@ -223,7 +223,7 @@ async function handleQuizAnswer(payload: SlackActionPayload, action: SlackAction
       );
       
       console.log(`🔍 ${hasExistingResponse ? 'This user has already answered this question' : 'First answer from this user for this question'}`);
-    } catch (_) {
+    } catch {
       console.log('📝 No previous responses found');
     }
     

@@ -25,19 +25,20 @@ const ChannelSelector: React.FC<ChannelSelectorProps> = ({
     const fetchChannels = async () => {
       try {
         setLoading(true);
-        // Placeholder for API call to get channels
+        // Fetch channels from API
         // const response = await fetch('/api/slack/channels');
-        // const data = await response.json();
-        // setChannels(data.channels);
-        
-        // Simulate loading delay
-        setTimeout(() => {
+        // if (response.ok) {
+        //   const data = await response.json();
+        //   setChannels(data.channels);
+        // } else {
+          // Fallback to hardcoded channels if API fails
           setChannels([
             { id: 'C08ST272AAG', name: '#test-bot' },
             { id: 'C08NFUBLJN9', name: '#english-club' },
+            { id: 'C08U1JW3X0C', name: '#lunch-order' },
           ]);
-          setLoading(false);
-        }, 500);
+        // }
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching channels:', error);
         setLoading(false);

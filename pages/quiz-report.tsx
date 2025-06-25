@@ -1,33 +1,5 @@
 import { useState, useEffect } from 'react';
-
-interface UserScore {
-  userId: string;
-  username: string;
-  score: number;
-  totalAnswered: number;
-  correctAnswers: number;
-  accuracy: number;
-}
-
-interface QuestionStat {
-  attempts: number;
-  correct: number;
-  question: string;
-  quizId: string;
-  questionIndex: number;
-  correctPercentage: number;
-}
-
-interface QuizStats {
-  totalResponses: number;
-  uniqueUsers: number;
-  questionStats: QuestionStat[];
-}
-
-interface ReportData {
-  userScores: UserScore[];
-  quizStats: QuizStats;
-}
+import { ReportData } from '../types/quiz';
 
 const pageStyles = {
   container: {
@@ -70,8 +42,9 @@ const pageStyles = {
     padding: '1rem',
     borderRadius: '5px',
     marginBottom: '1rem',
-    display: 'flex',
-    justifyContent: 'space-around',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+    gap: '1rem',
   },
   statItem: {
     textAlign: 'center' as const,
@@ -90,6 +63,14 @@ const pageStyles = {
     borderRadius: '999px',
     fontSize: '0.85rem',
     fontWeight: 'bold',
+  },
+  trendBadge: {
+    display: 'inline-block',
+    padding: '0.15rem 0.4rem',
+    borderRadius: '999px',
+    fontSize: '0.75rem',
+    fontWeight: 'bold',
+    marginLeft: '0.5rem',
   },
   refreshButton: {
     padding: '0.5rem 1rem',
@@ -125,12 +106,30 @@ const pageStyles = {
     fontSize: '1.2rem',
     color: '#e00',
   },
+  tabContainer: {
+    display: 'flex',
+    gap: '1rem',
+    marginBottom: '2rem',
+    borderBottom: '1px solid #eaeaea',
+  },
+  tab: {
+    padding: '0.5rem 1rem',
+    cursor: 'pointer',
+    borderBottom: '2px solid transparent',
+    fontSize: '1rem',
+  },
+  activeTab: {
+    borderBottom: '2px solid #0070f3',
+    color: '#0070f3',
+    fontWeight: 'bold',
+  },
 };
 
 export default function QuizReport() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'quiz' | 'pronunciation'>('quiz');
 
   const fetchReportData = async () => {
     setLoading(true);
@@ -164,9 +163,21 @@ export default function QuizReport() {
     return pageStyles.leaderboardRow;
   };
 
+  const getTrendStyle = (trend: number) => {
+    if (trend > 0) return { backgroundColor: '#d4edda', color: '#155724' };
+    if (trend < 0) return { backgroundColor: '#f8d7da', color: '#721c24' };
+    return { backgroundColor: '#e2e3e5', color: '#495057' };
+  };
+
+  const getTrendIcon = (trend: number) => {
+    if (trend > 0) return '↗️';
+    if (trend < 0) return '↘️';
+    return '→';
+  };
+
   return (
     <div style={pageStyles.container}>
-      <h1 style={pageStyles.title}>Quiz Performance Report</h1>
+      <h1 style={pageStyles.title}>Performance Report</h1>
 
       {loading && (
         <div style={pageStyles.loading}>
@@ -187,102 +198,252 @@ export default function QuizReport() {
 
       {reportData && (
         <>
-          <div style={pageStyles.statsBox}>
-            <div style={pageStyles.statItem}>
-              <div style={pageStyles.statValue}>{reportData.quizStats.totalResponses}</div>
-              <div style={pageStyles.statLabel}>Total Responses</div>
+          {/* Tab Navigation */}
+          <div style={pageStyles.tabContainer}>
+            <div 
+              style={{
+                ...pageStyles.tab,
+                ...(activeTab === 'quiz' ? pageStyles.activeTab : {})
+              }}
+              onClick={() => setActiveTab('quiz')}
+            >
+              📝 Quiz Performance
             </div>
-            <div style={pageStyles.statItem}>
-              <div style={pageStyles.statValue}>{reportData.quizStats.uniqueUsers}</div>
-              <div style={pageStyles.statLabel}>Unique Users</div>
+            <div 
+              style={{
+                ...pageStyles.tab,
+                ...(activeTab === 'pronunciation' ? pageStyles.activeTab : {})
+              }}
+              onClick={() => setActiveTab('pronunciation')}
+            >
+              🎤 Pronunciation Practice
             </div>
-            <div style={pageStyles.statItem}>
-              <div style={pageStyles.statValue}>
-                {reportData.userScores.length > 0 
-                  ? Math.round(reportData.userScores.reduce((sum, user) => sum + user.accuracy, 0) / reportData.userScores.length) 
-                  : 0}%
+          </div>
+
+          {/* Quiz Tab */}
+          {activeTab === 'quiz' && (
+            <>
+              <div style={pageStyles.statsBox}>
+                <div style={pageStyles.statItem}>
+                  <div style={pageStyles.statValue}>{reportData.quizStats.totalResponses}</div>
+                  <div style={pageStyles.statLabel}>Total Responses</div>
+                </div>
+                <div style={pageStyles.statItem}>
+                  <div style={pageStyles.statValue}>{reportData.quizStats.uniqueUsers}</div>
+                  <div style={pageStyles.statLabel}>Unique Users</div>
+                </div>
+                <div style={pageStyles.statItem}>
+                  <div style={pageStyles.statValue}>
+                    {reportData.userScores.length > 0 
+                      ? Math.round(reportData.userScores.reduce((sum, user) => sum + user.accuracy, 0) / reportData.userScores.length) 
+                      : 0}%
+                  </div>
+                  <div style={pageStyles.statLabel}>Average Accuracy</div>
+                </div>
+                <div style={pageStyles.statItem}>
+                  <div style={pageStyles.statValue}>{reportData.quizStats.questionStats.length}</div>
+                  <div style={pageStyles.statLabel}>Total Questions</div>
+                </div>
               </div>
-              <div style={pageStyles.statLabel}>Average Accuracy</div>
-            </div>
-          </div>
 
-          <div style={pageStyles.section}>
-            <h2 style={pageStyles.subtitle}>Leaderboard</h2>
-            <table style={pageStyles.table}>
-              <thead>
-                <tr>
-                  <th style={pageStyles.th}>Rank</th>
-                  <th style={pageStyles.th}>User</th>
-                  <th style={pageStyles.th}>Score</th>
-                  <th style={pageStyles.th}>Questions Answered</th>
-                  <th style={pageStyles.th}>Accuracy</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.userScores.map((user, index) => (
-                  <tr key={user.userId} style={getRowStyle(index)}>
-                    <td style={pageStyles.td}>{index + 1}</td>
-                    <td style={pageStyles.td}>{user.username}</td>
-                    <td style={pageStyles.td}>{user.score}</td>
-                    <td style={pageStyles.td}>{user.totalAnswered}</td>
-                    <td style={pageStyles.td}>{Math.round(user.accuracy)}%</td>
-                  </tr>
-                ))}
-                {reportData.userScores.length === 0 && (
-                  <tr>
-                    <td colSpan={5} style={{...pageStyles.td, textAlign: 'center'}}>
-                      No user scores available yet
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              <div style={pageStyles.section}>
+                <h2 style={pageStyles.subtitle}>📊 Quiz Leaderboard</h2>
+                <table style={pageStyles.table}>
+                  <thead>
+                    <tr>
+                      <th style={pageStyles.th}>Rank</th>
+                      <th style={pageStyles.th}>User</th>
+                      <th style={pageStyles.th}>Score</th>
+                      <th style={pageStyles.th}>Questions Answered</th>
+                      <th style={pageStyles.th}>Accuracy</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.userScores.map((user, index) => (
+                      <tr key={user.userId} style={getRowStyle(index)}>
+                        <td style={pageStyles.td}>{index + 1}</td>
+                        <td style={pageStyles.td}>{user.username}</td>
+                        <td style={pageStyles.td}>{user.score}</td>
+                        <td style={pageStyles.td}>{user.totalAnswered}</td>
+                        <td style={pageStyles.td}>{Math.round(user.accuracy)}%</td>
+                      </tr>
+                    ))}
+                    {reportData.userScores.length === 0 && (
+                      <tr>
+                        <td colSpan={5} style={{...pageStyles.td, textAlign: 'center'}}>
+                          No user scores available yet
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-          <div style={pageStyles.section}>
-            <h2 style={pageStyles.subtitle}>Question Difficulty</h2>
-            <table style={pageStyles.table}>
-              <thead>
-                <tr>
-                  <th style={pageStyles.th}>Question</th>
-                  <th style={pageStyles.th}>Attempts</th>
-                  <th style={pageStyles.th}>Correct</th>
-                  <th style={pageStyles.th}>Success Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.quizStats.questionStats.map((stat) => (
-                  <tr key={`${stat.quizId}_${stat.questionIndex}`}>
-                    <td style={pageStyles.td}>{stat.question}</td>
-                    <td style={pageStyles.td}>{stat.attempts}</td>
-                    <td style={pageStyles.td}>{stat.correct}</td>
-                    <td style={pageStyles.td}>
-                      <div style={{
-                        ...pageStyles.badge,
-                        backgroundColor: 
-                          stat.correctPercentage >= 75 ? '#d4edda' :
-                          stat.correctPercentage >= 50 ? '#fff3cd' : 
-                          '#f8d7da',
-                        color:
-                          stat.correctPercentage >= 75 ? '#155724' :
-                          stat.correctPercentage >= 50 ? '#856404' : 
-                          '#721c24'
-                      }}>
-                        {Math.round(stat.correctPercentage)}%
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {reportData.quizStats.questionStats.length === 0 && (
-                  <tr>
-                    <td colSpan={4} style={{...pageStyles.td, textAlign: 'center'}}>
-                      No question statistics available yet
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              <div style={pageStyles.section}>
+                <h2 style={pageStyles.subtitle}>❓ Question Difficulty</h2>
+                <table style={pageStyles.table}>
+                  <thead>
+                    <tr>
+                      <th style={pageStyles.th}>Question</th>
+                      <th style={pageStyles.th}>Attempts</th>
+                      <th style={pageStyles.th}>Correct</th>
+                      <th style={pageStyles.th}>Success Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.quizStats.questionStats.map((stat) => (
+                      <tr key={`${stat.quizId}_${stat.questionIndex}`}>
+                        <td style={pageStyles.td}>{stat.question}</td>
+                        <td style={pageStyles.td}>{stat.attempts}</td>
+                        <td style={pageStyles.td}>{stat.correct}</td>
+                        <td style={pageStyles.td}>
+                          <div style={{
+                            ...pageStyles.badge,
+                            backgroundColor: 
+                              stat.correctPercentage >= 75 ? '#d4edda' :
+                              stat.correctPercentage >= 50 ? '#fff3cd' : 
+                              '#f8d7da',
+                            color:
+                              stat.correctPercentage >= 75 ? '#155724' :
+                              stat.correctPercentage >= 50 ? '#856404' : 
+                              '#721c24'
+                          }}>
+                            {Math.round(stat.correctPercentage)}%
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {reportData.quizStats.questionStats.length === 0 && (
+                      <tr>
+                        <td colSpan={4} style={{...pageStyles.td, textAlign: 'center'}}>
+                          No question statistics available yet
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* Pronunciation Tab */}
+          {activeTab === 'pronunciation' && (
+            <>
+              <div style={pageStyles.statsBox}>
+                <div style={pageStyles.statItem}>
+                  <div style={pageStyles.statValue}>{reportData.pronunciation.stats.totalAttempts}</div>
+                  <div style={pageStyles.statLabel}>Total Attempts</div>
+                </div>
+                <div style={pageStyles.statItem}>
+                  <div style={pageStyles.statValue}>{reportData.pronunciation.stats.totalUsers}</div>
+                  <div style={pageStyles.statLabel}>Active Users</div>
+                </div>
+                <div style={pageStyles.statItem}>
+                  <div style={pageStyles.statValue}>{reportData.pronunciation.stats.overallAverageScore}/100</div>
+                  <div style={pageStyles.statLabel}>Average Score</div>
+                </div>
+                <div style={pageStyles.statItem}>
+                  <div style={pageStyles.statValue}>{reportData.pronunciation.stats.uniqueThreads}</div>
+                  <div style={pageStyles.statLabel}>Content Pieces</div>
+                </div>
+              </div>
+
+              <div style={pageStyles.section}>
+                <h2 style={pageStyles.subtitle}>🎤 Pronunciation Leaderboard</h2>
+                <table style={pageStyles.table}>
+                  <thead>
+                    <tr>
+                      <th style={pageStyles.th}>Rank</th>
+                      <th style={pageStyles.th}>User</th>
+                      <th style={pageStyles.th}>Average Score</th>
+                      <th style={pageStyles.th}>Best Score</th>
+                      <th style={pageStyles.th}>Attempts</th>
+                      <th style={pageStyles.th}>Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.pronunciation.userScores.map((user, index) => (
+                      <tr key={user.userId} style={getRowStyle(index)}>
+                        <td style={pageStyles.td}>{index + 1}</td>
+                        <td style={pageStyles.td}>{user.username}</td>
+                        <td style={pageStyles.td}>{user.averageScore}/100</td>
+                        <td style={pageStyles.td}>{user.bestScore}/100</td>
+                        <td style={pageStyles.td}>{user.totalAttempts}</td>
+                        <td style={pageStyles.td}>
+                          {user.improvementTrend !== 0 && (
+                            <div style={{
+                              ...pageStyles.trendBadge,
+                              ...getTrendStyle(user.improvementTrend)
+                            }}>
+                              {getTrendIcon(user.improvementTrend)} {Math.abs(user.improvementTrend)}
+                            </div>
+                          )}
+                          {user.improvementTrend === 0 && (
+                            <span style={{ color: '#666', fontSize: '0.85rem' }}>First attempt</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {reportData.pronunciation.userScores.length === 0 && (
+                      <tr>
+                        <td colSpan={6} style={{...pageStyles.td, textAlign: 'center'}}>
+                          No pronunciation attempts yet
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={pageStyles.section}>
+                <h2 style={pageStyles.subtitle}>📰 Content Difficulty</h2>
+                <table style={pageStyles.table}>
+                  <thead>
+                    <tr>
+                      <th style={pageStyles.th}>Content</th>
+                      <th style={pageStyles.th}>Attempts</th>
+                      <th style={pageStyles.th}>Average Score</th>
+                      <th style={pageStyles.th}>Best Score</th>
+                      <th style={pageStyles.th}>Difficulty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.pronunciation.stats.threadStats.map((stat) => (
+                      <tr key={stat.threadId}>
+                        <td style={pageStyles.td}>{stat.originalText}</td>
+                        <td style={pageStyles.td}>{stat.attempts}</td>
+                        <td style={pageStyles.td}>{stat.averageScore}/100</td>
+                        <td style={pageStyles.td}>{stat.bestScore}/100</td>
+                        <td style={pageStyles.td}>
+                          <div style={{
+                            ...pageStyles.badge,
+                            backgroundColor: 
+                              stat.averageScore >= 70 ? '#d4edda' :
+                              stat.averageScore >= 50 ? '#fff3cd' : 
+                              '#f8d7da',
+                            color:
+                              stat.averageScore >= 70 ? '#155724' :
+                              stat.averageScore >= 50 ? '#856404' : 
+                              '#721c24'
+                          }}>
+                            {stat.averageScore >= 70 ? 'Easy' : 
+                             stat.averageScore >= 50 ? 'Medium' : 'Hard'}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {reportData.pronunciation.stats.threadStats.length === 0 && (
+                      <tr>
+                        <td colSpan={5} style={{...pageStyles.td, textAlign: 'center'}}>
+                          No content statistics available yet
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <div style={{textAlign: 'center'}}>
             <button style={pageStyles.refreshButton} onClick={fetchReportData}>
