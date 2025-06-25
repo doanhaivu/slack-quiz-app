@@ -1,6 +1,7 @@
 import { WebClient } from '@slack/web-api';
 import OpenAI from 'openai';
 import axios from 'axios';
+import { savePronunciationResponse, PronunciationResponseData } from '../quiz';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -244,6 +245,33 @@ async function processAudioFile(
     });
 
     console.log('✅ Feedback posted to Slack thread successfully');
+
+    // Extract score from feedback (format: "Score: XX/100")
+    let score = 0;
+    if (feedback) {
+      const scoreMatch = feedback.match(/Score:\s*(\d+)\/100/);
+      if (scoreMatch) {
+        score = parseInt(scoreMatch[1], 10);
+      }
+    }
+
+    // Save the pronunciation response
+    const responseData: PronunciationResponseData = {
+      userId: eventData.user,
+      threadId: eventData.thread_ts || '',
+      originalText: originalText,
+      transcribedText: transcription.text,
+      score: score,
+      feedback: feedback || '',
+      timestamp: new Date().toISOString()
+    };
+    
+    try {
+      await savePronunciationResponse(responseData);
+      console.log(`💾 Saved pronunciation response: score=${score}/100`);
+    } catch (saveError) {
+      console.error('❌ Error saving pronunciation response:', saveError);
+    }
 
   } catch (error) {
     console.error('❌ Error processing audio file:', error);
