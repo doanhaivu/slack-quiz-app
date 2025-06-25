@@ -1,5 +1,8 @@
 import { getSlackClient } from '../slack/client';
 import { QuizResponse, getAllResponses, filterResponsesByWeek } from './response-manager';
+import { PronunciationResponseData } from './index';
+import fs from 'fs/promises';
+import path from 'path';
 
 export interface UserScore {
   userId: string;
@@ -10,6 +13,15 @@ export interface UserScore {
   accuracy: number;
 }
 
+export interface UserPronunciationScore {
+  userId: string;
+  username: string;
+  averageScore: number;
+  bestScore: number;
+  totalAttempts: number;
+  improvementTrend: number; // Difference between first and latest score
+}
+
 export interface QuestionStat {
   attempts: number;
   correct: number;
@@ -17,6 +29,143 @@ export interface QuestionStat {
   quizId: string;
   questionIndex: number;
   correctPercentage: number;
+}
+
+export interface PronunciationStat {
+  threadId: string;
+  originalText: string;
+  attempts: number;
+  averageScore: number;
+  bestScore: number;
+  worstScore: number;
+}
+
+/**
+ * Get all pronunciation responses
+ */
+async function getAllPronunciationResponses(): Promise<PronunciationResponseData[]> {
+  try {
+    const responsesPath = path.join(process.cwd(), 'data', 'pronunciation-responses.json');
+    const data = await fs.readFile(responsesPath, 'utf8');
+    return JSON.parse(data) || [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Calculate user pronunciation scores
+ */
+export async function calculateUserPronunciationScores(): Promise<UserPronunciationScore[]> {
+  const allResponses = await getAllPronunciationResponses();
+  
+  // Group responses by user
+  const userResponsesMap = new Map<string, PronunciationResponseData[]>();
+  
+  for (const response of allResponses) {
+    if (!userResponsesMap.has(response.userId)) {
+      userResponsesMap.set(response.userId, []);
+    }
+    userResponsesMap.get(response.userId)!.push(response);
+  }
+  
+  const userScores: UserPronunciationScore[] = [];
+  
+  for (const [userId, responses] of userResponsesMap.entries()) {
+    // Sort by timestamp to get chronological order
+    const sortedResponses = responses.sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    
+    const scores = sortedResponses.map(r => r.score);
+    const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    const bestScore = Math.max(...scores);
+    const improvementTrend = scores.length > 1 ? scores[scores.length - 1] - scores[0] : 0;
+    
+    userScores.push({
+      userId,
+      username: userId, // Will be updated later with real names
+      averageScore: Math.round(averageScore * 10) / 10, // Round to 1 decimal
+      bestScore,
+      totalAttempts: responses.length,
+      improvementTrend: Math.round(improvementTrend * 10) / 10
+    });
+  }
+  
+  // Sort by average score (highest first)
+  userScores.sort((a, b) => b.averageScore - a.averageScore);
+  
+  // Try to get usernames from Slack
+  try {
+    const slack = getSlackClient();
+    for (const score of userScores) {
+      try {
+        const userInfo = await slack.users.info({ user: score.userId });
+        if (userInfo.user && userInfo.user.real_name) {
+          score.username = userInfo.user.real_name;
+        } else if (userInfo.user && userInfo.user.name) {
+          score.username = userInfo.user.name;
+        }
+      } catch (error) {
+        console.error(`Could not get username for ${score.userId}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error('Error getting usernames:', error);
+  }
+  
+  return userScores;
+}
+
+/**
+ * Get pronunciation statistics by thread/content
+ */
+export async function getPronunciationStatistics() {
+  const allResponses = await getAllPronunciationResponses();
+  
+  // Group by thread ID
+  const threadStatsMap = new Map<string, PronunciationResponseData[]>();
+  
+  for (const response of allResponses) {
+    if (!threadStatsMap.has(response.threadId)) {
+      threadStatsMap.set(response.threadId, []);
+    }
+    threadStatsMap.get(response.threadId)!.push(response);
+  }
+  
+  const threadStats: PronunciationStat[] = [];
+  
+  for (const [threadId, responses] of threadStatsMap.entries()) {
+    const scores = responses.map(r => r.score);
+    const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    const bestScore = Math.max(...scores);
+    const worstScore = Math.min(...scores);
+    
+    // Get original text from any response (should be same for all in thread)
+    const originalText = responses[0].originalText;
+    
+    threadStats.push({
+      threadId,
+      originalText: originalText.substring(0, 100) + (originalText.length > 100 ? '...' : ''),
+      attempts: responses.length,
+      averageScore: Math.round(averageScore * 10) / 10,
+      bestScore,
+      worstScore
+    });
+  }
+  
+  // Sort by average score (lowest first to show most challenging content)
+  threadStats.sort((a, b) => a.averageScore - b.averageScore);
+  
+  return {
+    totalAttempts: allResponses.length,
+    uniqueThreads: threadStatsMap.size,
+    totalUsers: new Set(allResponses.map(r => r.userId)).size,
+    overallAverageScore: allResponses.length > 0 
+      ? Math.round((allResponses.reduce((sum, r) => sum + r.score, 0) / allResponses.length) * 10) / 10
+      : 0,
+    threadStats
+  };
 }
 
 /**

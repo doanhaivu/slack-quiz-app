@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { calculateUserScores, getQuizStatistics, getAvailableWeeks } from '../../services/quiz';
+import { calculateUserScores, getQuizStatistics, getAvailableWeeks, calculateUserPronunciationScores, getPronunciationStatistics } from '../../services/quiz';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -19,11 +19,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get quiz statistics (with optional week filter)
     const quizStats = await getQuizStatistics(weekFilter);
     
+    // Get pronunciation statistics (no week filter for now - could be added later)
+    const pronunciationUserScores = await calculateUserPronunciationScores();
+    const pronunciationStats = await getPronunciationStatistics();
+    
     return res.status(200).json({
       userScores,
       quizStats,
       availableWeeks,
-      currentWeek: weekFilter || 'all'
+      currentWeek: weekFilter || 'all',
+      pronunciation: {
+        userScores: pronunciationUserScores,
+        stats: pronunciationStats
+      }
     });
   } catch (error) {
     console.error('Error generating quiz report:', error);
