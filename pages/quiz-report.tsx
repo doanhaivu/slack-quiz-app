@@ -123,6 +123,33 @@ const pageStyles = {
     color: '#0070f3',
     fontWeight: 'bold',
   },
+  weekSelector: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+    marginBottom: '2rem',
+    padding: '1rem',
+    backgroundColor: '#f9f9f9',
+    borderRadius: '5px',
+  },
+  weekLabel: {
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  weekDropdown: {
+    padding: '0.5rem',
+    fontSize: '1rem',
+    border: '1px solid #ddd',
+    borderRadius: '5px',
+    backgroundColor: 'white',
+    minWidth: '150px',
+  },
+  weekInfo: {
+    fontSize: '0.9rem',
+    color: '#666',
+    marginLeft: 'auto',
+  },
 };
 
 export default function QuizReport() {
@@ -130,13 +157,18 @@ export default function QuizReport() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'quiz' | 'pronunciation'>('quiz');
+  const [selectedWeek, setSelectedWeek] = useState<string>('all');
 
-  const fetchReportData = async () => {
+  const fetchReportData = async (week?: string) => {
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch('/api/quiz-report');
+      const weekParam = week || selectedWeek;
+      const url = weekParam && weekParam !== 'all' 
+        ? `/api/quiz-report?week=${encodeURIComponent(weekParam)}`
+        : '/api/quiz-report';
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch report data: ${response.statusText}`);
@@ -150,6 +182,15 @@ export default function QuizReport() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleWeekChange = async (week: string) => {
+    setSelectedWeek(week);
+    await fetchReportData(week);
+  };
+
+  const handleRefresh = () => {
+    fetchReportData();
   };
 
   useEffect(() => {
@@ -189,7 +230,7 @@ export default function QuizReport() {
         <div style={pageStyles.error}>
           Error: {error}
           <div>
-            <button style={pageStyles.refreshButton} onClick={fetchReportData}>
+            <button style={pageStyles.refreshButton} onClick={handleRefresh}>
               Try Again
             </button>
           </div>
@@ -198,6 +239,34 @@ export default function QuizReport() {
 
       {reportData && (
         <>
+          {/* Week Selection */}
+          <div style={pageStyles.weekSelector}>
+            <label style={pageStyles.weekLabel}>Time Period:</label>
+            <select 
+              style={pageStyles.weekDropdown}
+              value={selectedWeek}
+              onChange={(e) => handleWeekChange(e.target.value)}
+            >
+              <option value="all">All Time</option>
+              {/* Combine quiz and pronunciation weeks, remove duplicates, sort */}
+              {[...new Set([
+                ...(reportData.availableWeeks || []),
+                ...(reportData.pronunciation?.availableWeeks || [])
+              ])].sort((a, b) => b.localeCompare(a)).map(week => (
+                <option key={week} value={week}>
+                  Week of {new Date(week).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    year: 'numeric' 
+                  })}
+                </option>
+              ))}
+            </select>
+            <div style={pageStyles.weekInfo}>
+              {selectedWeek === 'all' ? 'Showing all-time data' : `Showing data for week of ${new Date(selectedWeek).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+            </div>
+          </div>
+
           {/* Tab Navigation */}
           <div style={pageStyles.tabContainer}>
             <div 
@@ -446,7 +515,7 @@ export default function QuizReport() {
           )}
 
           <div style={{textAlign: 'center'}}>
-            <button style={pageStyles.refreshButton} onClick={fetchReportData}>
+            <button style={pageStyles.refreshButton} onClick={handleRefresh}>
               Refresh Data
             </button>
           </div>
