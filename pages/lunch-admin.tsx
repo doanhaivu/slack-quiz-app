@@ -135,15 +135,21 @@ const LunchAdminPage: NextPage = () => {
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', fontFamily: 'system-ui', position: 'relative' }}>
         <h1>🍽️ Lunch Order Admin</h1>
         
-        <ChannelSelector
-          selectedChannel={selectedChannel}
-          onChannelChange={setSelectedChannel}
-        />
-        
-        <BotSelector
-          selectedBot={selectedBot}
-          onBotChange={setSelectedBot}
-        />
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '250px' }}>
+            <ChannelSelector
+              selectedChannel={selectedChannel}
+              onChannelChange={setSelectedChannel}
+            />
+          </div>
+          
+          <div style={{ flex: 1, minWidth: '250px' }}>
+            <BotSelector
+              selectedBot={selectedBot}
+              onBotChange={setSelectedBot}
+            />
+          </div>
+        </div>
         
         {message && (
           <div style={{ 

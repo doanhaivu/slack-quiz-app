@@ -15,6 +15,8 @@ declare const styles: {
   readonly label: string;
   readonly description: string;
   readonly footer: string;
+  readonly themeToggle: string;
+  readonly themeLabel: string;
   readonly footerText: string;
   readonly version: string;
 };
