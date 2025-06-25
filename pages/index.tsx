@@ -9,6 +9,7 @@ import { ContentReview } from '../components/ContentReview/ContentReview';
 import { useContentExtraction } from '../hooks/useContentExtraction';
 import { useMediaHandling } from '../hooks/useMediaHandling';
 import { useLogs } from '../contexts/LogContext';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 // Define styles type to include all CSS classes
 interface Styles {
@@ -386,18 +387,20 @@ export default function Home() {
   );
 
   return (
-    <div className={typedStyles.container}>
-      <main>
-        <h1 className={typedStyles.title}>
-          Slack Content Poster
-        </h1>
-        
-        <ThreeColumnLayout
-          leftSidebar={leftSidebar}
-          mainContent={mainContent}
-          rightSidebar={rightSidebar}
-        />
-      </main>
-    </div>
+    <ProtectedRoute>
+      <div className={typedStyles.container}>
+        <main>
+          <h1 className={typedStyles.title}>
+            Slack Content Poster
+          </h1>
+          
+          <ThreeColumnLayout
+            leftSidebar={leftSidebar}
+            mainContent={mainContent}
+            rightSidebar={rightSidebar}
+          />
+        </main>
+      </div>
+    </ProtectedRoute>
   );
 } 
