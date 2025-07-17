@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import ChannelSelector from '../components/ChannelSelector';
 import { BotSelector } from '../components/BotSelector';
 import { SLACK_CHANNEL_ID } from '../constants';
@@ -17,6 +18,7 @@ interface LunchSummary {
 }
 
 const LunchAdminPage: NextPage = () => {
+  const router = useRouter();
   const [summary, setSummary] = useState<LunchSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -125,6 +127,19 @@ const LunchAdminPage: NextPage = () => {
   useEffect(() => {
     fetchSummary();
   }, []);
+
+  // Handle query parameters
+  useEffect(() => {
+    if (router.isReady) {
+      const { type } = router.query;
+      
+      if (type === 'comvanphong') {
+        // Set bot to lunchbot and channel to lunch-order
+        setSelectedBot('bot_1750383543233'); // lunchbot
+        setSelectedChannel('C08U1JW3X0C'); // lunch-order channel
+      }
+    }
+  }, [router.isReady, router.query]);
 
   return (
     <>
